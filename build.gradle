@@ -1,0 +1,109 @@
+/*
+ *  /***************************************************************************
+ *  Copyright (c) 2017, EPAM SYSTEMS INC
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ *  ***************************************************************************
+ */
+
+group group
+version version
+
+apply plugin: 'groovy'
+apply plugin: 'java'
+apply plugin: 'maven-publish'
+
+sourceCompatibility = JavaVersion.VERSION_1_8
+targetCompatibility = JavaVersion.VERSION_1_8
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
+}
+
+publishing {
+    repositories {
+        maven {
+            credentials {
+                username project.getProperties().get("user")
+                password project.getProperties().get("passwd")
+            }
+            url "${mvnRepo}/${project.getProperties().get('repo', 'esp')}"
+        }
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        url "https://touch.epm-esp.projects.epam.com/maven/esp-dev"
+    }
+
+    maven {
+        url "https://touch.epm-esp.projects.epam.com/maven/esp"
+    }
+
+    maven {
+        url "https://m2proxy.atlassian.com/repository/public"
+    }
+    maven {
+        url 'https://maven.atlassian.com/content/repositories/atlassian-public'
+    }
+    maven {
+        url 'http://maven.jahia.org/maven2'
+    }
+
+    maven {
+        url 'https://artifacts.elastic.co/maven'
+    }
+}
+
+dependencies {
+    compile "com.epam.dep.esp:gmp-common:$gmpCommonVersion"
+    compile "org.codehaus.groovy:groovy-all:$groovyVersion"
+    compile "org.slf4j:slf4j-api:${slf4jVersion}"
+    compile "org.slf4j:slf4j-log4j12:${slf4jVersion}"
+    compile "com.atlassian.jira:jira-rest-java-client-api:$atlassianJiraRestVersion"
+    compile "com.atlassian.jira:jira-rest-java-client-core:$atlassianJiraRestVersion"
+    compile "com.atlassian.fugue:fugue:$atlassianFugueVersion"
+    compile "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
+    compile "org.apache.commons:commons-io:$commonsIoVersion"
+    compile "commons-cli:commons-cli:$commonsCliVersion"
+    compile "org.json:json:$jsonVersion"
+
+    compile "net.sf.ehcache:ehcache:$ehCacheVersion"
+
+//elastic
+    compile "org.elasticsearch.client:transport:${elasticSearchVersion}"
+    compile "org.apache.logging.log4j:log4j-api:$log4jVersion"
+    compile "org.apache.logging.log4j:log4j-core:$log4jVersion"
+    compile "org.slf4j:slf4j-api:${slf4jVersion}"
+    compile "org.slf4j:slf4j-log4j12:${slf4jVersion}"
+    compile "org.elasticsearch.client:x-pack-transport:${elasticSearchVersion}"
+//end elastic
+
+    testCompile "junit:junit:$junitVersion"
+}
+
+task copyToLib(type: Copy) {
+    into "$buildDir/output/lib"
+    from configurations.runtime
+}
+
+jar {
+    manifest {
+        attributes("Implementation-Title": "${rootProject.group}:${rootProject.name}",
+                "Implementation-Version": version,
+                "Implementation-Vendor": "EPAM SYSTEMS INC")
+    }
+}
