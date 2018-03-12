@@ -16,42 +16,16 @@
 group group
 version version
 
-apply plugin: 'groovy'
 apply plugin: 'java'
-apply plugin: 'maven-publish'
+apply plugin: 'groovy'
+apply plugin: 'maven'
+apply plugin: 'signing'
 
 sourceCompatibility = JavaVersion.VERSION_1_8
 targetCompatibility = JavaVersion.VERSION_1_8
 
-publishing {
-    publications {
-        mavenJava(MavenPublication) {
-            from components.java
-        }
-    }
-}
-
-publishing {
-    repositories {
-        maven {
-            credentials {
-                username project.getProperties().get("user")
-                password project.getProperties().get("passwd")
-            }
-            url "${mvnRepo}/${project.getProperties().get('repo', 'esp')}"
-        }
-    }
-}
-
 repositories {
     mavenCentral()
-    maven {
-        url "https://touch.epm-esp.projects.epam.com/maven/esp-dev"
-    }
-
-    maven {
-        url "https://touch.epm-esp.projects.epam.com/maven/esp"
-    }
 
     maven {
         url "https://m2proxy.atlassian.com/repository/public"
@@ -65,6 +39,10 @@ repositories {
 
     maven {
         url 'https://artifacts.elastic.co/maven'
+    }
+
+    maven {
+        url "https://oss.sonatype.org/content/groups/public"
     }
 }
 
@@ -83,14 +61,14 @@ dependencies {
 
     compile "net.sf.ehcache:ehcache:$ehCacheVersion"
 
-//elastic
+//ElasticSearch
     compile "org.elasticsearch.client:transport:${elasticSearchVersion}"
     compile "org.apache.logging.log4j:log4j-api:$log4jVersion"
     compile "org.apache.logging.log4j:log4j-core:$log4jVersion"
     compile "org.slf4j:slf4j-api:${slf4jVersion}"
     compile "org.slf4j:slf4j-log4j12:${slf4jVersion}"
     compile "org.elasticsearch.client:x-pack-transport:${elasticSearchVersion}"
-//end elastic
+//end ElasticSearch
 
     testCompile "junit:junit:$junitVersion"
 }
@@ -105,5 +83,69 @@ jar {
         attributes("Implementation-Title": "${rootProject.group}:${rootProject.name}",
                 "Implementation-Version": version,
                 "Implementation-Vendor": "EPAM SYSTEMS INC")
+    }
+}
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+
+            repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+                authentication(userName: nexusUsername, password: nexusPassword)
+            }
+
+            snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
+                authentication(userName: nexusUsername, password: nexusPassword)
+            }
+
+            pom.project {
+                packaging 'jar'
+                name 'gmp-tools'
+                description 'Tools module for GroovyManiPulator'
+                url 'https://github.com/epam/gmp-tools'
+
+                scm {
+                    url 'https://github.com/epam/gmp-tools'
+                    connection 'scm:https://github.com/epam/gmp-tools.git'
+                    developerConnection 'scm:https://github.com/epam/gmp-tools.git'
+                }
+
+                licenses {
+                    license {
+                        name 'The Apache License, Version 2.0'
+                        url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                    }
+                }
+
+                developers {
+                    developer {
+                        id 'asamuta'
+                        name 'Andrei Samuta'
+                        email 'a.samuta@gmail.com'
+                    }
+                }
+            }
+        }
+    }
+}
+
+task javadocJar(type: Jar) {
+    classifier = 'javadoc'
+    from javadoc
+}
+
+task sourcesJar(type: Jar) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+artifacts {
+    archives javadocJar, sourcesJar
+}
+
+if (project.hasProperty('signing.keyId')) {
+    signing {
+        sign configurations.archives
     }
 }
