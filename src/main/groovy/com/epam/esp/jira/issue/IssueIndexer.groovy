@@ -18,6 +18,8 @@ package com.epam.esp.jira.issue
 import com.atlassian.jira.rest.client.api.domain.Issue
 import com.epam.esp.elasticsearch.ElasticSearchHelper
 import com.epam.esp.jira.JiraHelper
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -37,6 +39,7 @@ class IssueIndexer implements Runnable {
     def fields
     boolean force
     def issuesCount
+    def issueDocType
     boolean isIssueDetailStashAdding = false
 
     final static Logger logger = LoggerFactory.getLogger(IssueIndexer.class)
@@ -51,14 +54,16 @@ class IssueIndexer implements Runnable {
      * @param fields - list of fields used
      * @param force - do not check if the issue is up to date in Elasticsearch index, force re-index
      * @param issuesCount
+     * @param issueDocType
      */
-    IssueIndexer(JiraHelper jiraHelper, ElasticSearchHelper elasticSearchHelper, Issue issue, fields, boolean force, issuesCount) {
+    IssueIndexer(JiraHelper jiraHelper, ElasticSearchHelper elasticSearchHelper, Issue issue, fields, boolean force, issuesCount, issueDocType) {
         this.jiraHelper = jiraHelper
         this.elasticSearchHelper = elasticSearchHelper
         this.issue = issue
         this.fields = fields
         this.force = force
         this.issuesCount = issuesCount
+        this.issueDocType = issueDocType
     }
 
     /**
@@ -87,6 +92,7 @@ class IssueIndexer implements Runnable {
         if (force || !elasticSearchHelper.isInSync(issue.key, issue.updateDate)) {
             try {
                 def item = jiraHelper.getJsonFromUri(issue.self.toString() + EXPAND_PARAMS);
+
                 if (isIssueDetailStashAdding && issue.id != null) {
                     try {
                         def detailStash = jiraHelper.getJsonFromUri("${jiraHelper.jiraContext.url}/${URL_DEV_STATUS}?issueId=${issue.id}&applicationType=stash&dataType=repository")
@@ -95,9 +101,14 @@ class IssueIndexer implements Runnable {
                         logMessage += "$e.message $issue.self  unable to index issue detail stash"
                     }
                 }
-                logMessage += ' got result from API '
-                logMessage += elasticSearchHelper.updateItem(issue.key, item)
+
+                def issueJson = new JsonSlurper().parseText(item)
+                issueJson << [docType: issueDocType]
+
+                logMessage += ' got result from API -> '
+                logMessage += elasticSearchHelper.updateItem("${issueDocType}_${issue.key}", JsonOutput.toJson(issueJson))
             } catch (Exception e) {
+                e.printStackTrace()
                 logMessage += "$e.message $issue.self  unable to index issue"
             }
         } else {

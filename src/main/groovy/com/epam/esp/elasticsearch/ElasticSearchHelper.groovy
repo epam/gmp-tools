@@ -20,7 +20,12 @@ import groovy.json.JsonSlurper
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequestBuilder
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesResponse
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest
+import org.elasticsearch.action.admin.indices.alias.get.GetAliasesResponse
+import org.elasticsearch.action.admin.indices.create.CreateIndexResponse
+import org.elasticsearch.action.bulk.BulkRequestBuilder
 import org.elasticsearch.action.get.GetResponse
+import org.elasticsearch.action.index.IndexRequestBuilder
+import org.elasticsearch.action.search.SearchRequestBuilder
 import org.elasticsearch.client.Client
 import org.elasticsearch.client.IndicesAdminClient
 import org.elasticsearch.client.Requests
@@ -28,7 +33,7 @@ import org.elasticsearch.cluster.metadata.AliasMetaData
 import org.elasticsearch.cluster.metadata.IndexMetaData
 import org.elasticsearch.common.collect.ImmutableOpenMap
 import org.elasticsearch.common.settings.Settings
-import org.elasticsearch.common.transport.InetSocketTransportAddress
+import org.elasticsearch.common.transport.TransportAddress
 import org.elasticsearch.common.xcontent.XContentType
 import org.elasticsearch.transport.client.PreBuiltTransportClient
 import org.elasticsearch.xpack.client.PreBuiltXPackTransportClient
@@ -37,6 +42,7 @@ import org.joda.time.format.DateTimeFormat
 import org.joda.time.format.DateTimeFormatter
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import java.util.Comparator
 
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
@@ -44,125 +50,45 @@ import java.util.concurrent.TimeUnit
 class ElasticSearchHelper {
     final static Logger logger = LoggerFactory.getLogger(ElasticSearchHelper.class)
     String defaultIndex = null
-    String defaultType = null
-    Client client;
+    //The preferred type name is _doc, so that index APIs have the same path as they will have in 7.0
+    String defaultType = "_doc"
+    PreBuiltTransportClient client;
 
-    /**
-     *
-     * @param indexName
-     * @return true if given index exists
-     */
-    boolean isIndexExists(String indexName) {
-        IndexMetaData indexMetaData = client.admin().cluster()
-                .state(Requests.clusterStateRequest())
-                .actionGet()
-                .getState()
-                .getMetaData()
-                .index(indexName);
-        return (indexMetaData != null);
-    }
+    ElasticSearchHelper(String clusterName, String login, String password, String defaultIndex, nodes) {
 
-    /**
-     *
-     * @param documentId
-     * @return true if document with given id exists
-     */
-    boolean isDocumentExists(String documentId) {
-        return isDocumentExists(documentId, defaultType, defaultIndex)
-    }
+        this.defaultIndex = defaultIndex;
 
-    /**
-     *
-     * @param indexName
-     * @param documentType
-     * @param documentId
-     * @return true if document exists
-     */
-
-    boolean isDocumentExists(String indexName, String documentType, String documentId) {
-        def document = getDocumentById(indexName, documentType, documentId)
-        return document.exists
-    }
-
-    /**
-     *
-     * @param documentId
-     * @return document with given ID
-     */
-    def getDocumentById(String documentId) {
-        getDocumentById(defaultIndex, defaultType, documentId)
-    }
-
-    /**
-     *
-     * @param indexName
-     * @param documentType
-     * @param documentId
-     * @return document with given index, type, id
-     */
-    def getDocumentById(String indexName, String documentType, String documentId) {
-        return client.prepareGet(indexName, documentType, documentId).get()
-    }
-
-    /**
-     * JIRA 'issue' document specific
-     * @param documentId
-     * @param date
-     * @return true if 'issue' update date is the same
-     */
-    boolean isInSync(String documentId, date) {
-        return isInSync(documentId, defaultType, date);
-    }
-
-    /**
-     * JIRA 'issue' document specific
-     * @param documentId
-     * @param documentType
-     * @param date
-     * @return true if 'issue' update date is the same
-     */
-    boolean isInSync(String documentId, String documentType, DateTime date) {
-        GetResponse response = client.prepareGet().setId(documentId).setIndex(defaultIndex).setType(documentType).setFetchSource('fields.updated', null).execute().actionGet()
-        if (response.exists) {
-            def updated = response.sourceAsMap.fields.updated
-            if (updated != null) {
-                DateTimeFormatter dtf = DateTimeFormat.forPattern(JiraHelper.JIRA_DATE_FORMAT)
-                DateTime eDate = dtf.parseDateTime((String) updated)
-                //println key + "\n\r" + date + ">>\n\r" + eDate
-                return date.getMillis() <= eDate.getMillis();
-            }
-        }
-        return false;
-    }
-    /**
-     *
-     * @param documentId
-     * @param documentSrc
-     * @return
-     */
-    String updateItem(String documentId, documentSrc) {
-        return updateItem(defaultType, documentId, documentSrc)
-    }
-
-    String updateItem(String documentType, String documentId, documentSrc) {
-        return updateItem(defaultIndex, documentType, documentId, documentSrc)
-    }
-
-    String updateItem(String indexName, String documentType, String documentId, String documentSrc) {
-        def jsonSlurper = new JsonSlurper()
-        def object = jsonSlurper.parseText(documentSrc)
-        def message = ''
-        if ((object instanceof Map) && !(documentId.equals(object.get("key")) || documentId.equals(object.get("id")))) {
-            message += "$documentId Got wrong JSON from Jira. ERROR!\n"
-            return message
+        def settingsBuilder = Settings.builder()
+        if (clusterName == null) {
+            settingsBuilder.put('cluster.name', 'elasticsearch')
         } else {
-            message += "$documentId JSON is valid, "
+            settingsBuilder.put('cluster.name', clusterName)
         }
-        def response = client.prepareIndex(indexName, documentType, documentId).setSource(documentSrc, XContentType.JSON).get()
-        message += "version=$response.version\n"
-        return message
+
+        if (login != null) {
+            settingsBuilder.put('transport.ping_schedule', '5s')
+                    .put('xpack.security.transport.ssl.enabled', false)
+                    .put('xpack.security.user', "${login}:${password}".toString())
+                    .put("request.headers.X-Found-Cluster", clusterName)
+
+            //String token = basicAuthHeaderValue(login, new SecureString(password.toCharArray()));
+            //client.filterWithHeader(Collections.singletonMap("Authorization", token)).prepareSearch().get();
+        }
+
+        def settings = settingsBuilder.build()
+
+        if (login != null) {
+            client = new PreBuiltXPackTransportClient(settings)
+        } else {
+            client = new PreBuiltTransportClient(settings)
+        }
+
+        nodes.each { key, value ->
+            client = client.addTransportAddress(new TransportAddress(InetAddress.getByName(key), value))
+        }
     }
 
+    @Deprecated
     ElasticSearchHelper(String clusterName, String login, String password, String defaultIndex, String defaultType, nodes) {
         this.defaultIndex = defaultIndex;
         this.defaultType = defaultType
@@ -193,16 +119,182 @@ class ElasticSearchHelper {
         }
 
         nodes.each { key, value ->
-            client = client.addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName(key), value))
+            client = client.addTransportAddress(new TransportAddress(InetAddress.getByName(key), value))
         }
     }
+
+    /**
+     *
+     * @param indexName
+     * @return true if given index exists
+     */
+    boolean isIndexExists(String indexName) {
+        IndexMetaData indexMetaData = client.admin().cluster()
+                .state(Requests.clusterStateRequest())
+                .actionGet()
+                .getState()
+                .getMetaData()
+                .index(indexName);
+        return (indexMetaData != null);
+    }
+
+    /**
+     *
+     * @param documentId
+     * @return true if document with given id exists
+     */
+    boolean isDocumentExists(String documentId) {
+        def document = getDocumentById(documentId)
+        return document.exists
+    }
+
+    /**
+     *
+     * @param indexName
+     * @param documentType
+     * @param documentId
+     * @return true if document exists
+     */
+    @Deprecated
+    boolean isDocumentExists(String indexName, String documentType, String documentId) {
+        def document = getDocumentById(indexName, documentType, documentId)
+        return document.exists
+    }
+
+    /**
+     *
+     * @param indexName
+     * @param documentId
+     * @return true if document exists
+     */
+    boolean isDocumentExists(String indexName, String documentId) {
+        def document = getDocumentById(indexName, documentId)
+        return document.exists
+    }
+
+    /**
+     *
+     * @param documentId
+     * @return document with given ID
+     */
+    def getDocumentById(String documentId) {
+        getDocumentById(defaultIndex, documentId)
+    }
+
+    /**
+     *
+     * @param indexName
+     * @param documentType
+     * @param documentId
+     * @return document with given index, type, id
+     */
+    @Deprecated
+    def getDocumentById(String indexName, String documentType, String documentId) {
+        return client.prepareGet(indexName, documentType, documentId).get()
+    }
+
+    /**
+     *
+     * @param indexName
+     * @param documentId
+     * @return document with given index, type, id
+     */
+    def getDocumentById(String indexName, String documentId) {
+        return client.prepareGet(indexName, defaultType, documentId).get()
+    }
+
+    /**
+     * JIRA 'issue' document specific
+     * @param documentId
+     * @param date
+     * @return true if 'issue' update date is the same
+     */
+    boolean isInSync(String documentId, date) {
+        return isInSync(documentId, date);
+    }
+
+    /**
+     * JIRA 'issue' document specific
+     * @param documentId
+     * @param documentType
+     * @param date
+     * @return true if 'issue' update date is the same
+     */
+    @Deprecated
+    boolean isInSync(String documentId, String documentType, DateTime date) {
+        GetResponse response = client.prepareGet().setId(documentId).setIndex(defaultIndex).setType(documentType).setFetchSource('fields.updated', null).execute().actionGet()
+        if (response.exists) {
+            def updated = response.sourceAsMap.fields.updated
+            if (updated != null) {
+                DateTimeFormatter dtf = DateTimeFormat.forPattern(JiraHelper.JIRA_DATE_FORMAT)
+                DateTime eDate = dtf.parseDateTime((String) updated)
+                //println key + "\n\r" + date + ">>\n\r" + eDate
+                return date.getMillis() <= eDate.getMillis();
+            }
+        }
+        return false;
+    }
+    /**
+     * JIRA 'issue' document specific
+     * @param documentId
+     * @param date
+     * @return true if 'issue' update date is the same
+     */
+    boolean isInSync(String documentId, DateTime date) {
+        GetResponse response = client.prepareGet().setId(documentId).setIndex(defaultIndex).setType(defaultType).setFetchSource('fields.updated', null).execute().actionGet()
+        if (response.exists) {
+            def updated = response.sourceAsMap.fields.updated
+            if (updated != null) {
+                DateTimeFormatter dtf = DateTimeFormat.forPattern(JiraHelper.JIRA_DATE_FORMAT)
+                DateTime eDate = dtf.parseDateTime((String) updated)
+                //println key + "\n\r" + date + ">>\n\r" + eDate
+                return date.getMillis() <= eDate.getMillis();
+            }
+        }
+        return false;
+    }
+    /**
+     *
+     * @param documentId
+     * @param documentSrc
+     * @return
+     */
+    String updateItem(String documentId, String documentSrc) {
+        return updateItem(defaultIndex, documentId, documentSrc)
+    }
+
+    @Deprecated
+    String updateItem(String indexName, String documentType, String documentId, String documentSrc) {
+        def jsonSlurper = new JsonSlurper()
+        def object = jsonSlurper.parseText(documentSrc)
+        def message = ''
+        if ((object instanceof Map) && !(documentId.equals(object.get("key")) || documentId.equals(object.get("id")))) {
+            message += "$documentId Got wrong JSON from Jira. ERROR!\n"
+            return message
+        } else {
+            message += "$documentId ! $documentType ! JSON is valid, "
+        }
+        def response = client.prepareIndex(indexName, documentType, documentId).setSource(documentSrc, XContentType.JSON).get()
+        message += "version=$response.version\n"
+        return message
+    }
+
+    String updateItem(String indexName, String documentId, String documentSrc) {
+        def jsonSlurper = new JsonSlurper()
+        def object = jsonSlurper.parseText(documentSrc)
+        def message = ''
+        def response = client.prepareIndex(indexName, defaultType, documentId).setSource(documentSrc, XContentType.JSON).get()
+        message += "version=$response.version\n"
+        return message
+    }
+
     /**
      *
      * @param templateName
      * @param templateSrc
      */
     void postIndexMappingTemplate(String templateName, String templateSrc) {
-        def response = client.admin().indices().preparePutTemplate(templateName).setSource(templateSrc).execute().actionGet();
+        def response = client.admin().indices().preparePutTemplate(templateName).setSource(templateSrc.getBytes("utf-8"), XContentType.JSON).execute().actionGet();
     }
 
     /**
@@ -210,15 +302,29 @@ class ElasticSearchHelper {
      * @return indices for alias with given name
      */
     public Collection<String> getIndicesFromAliasName(String aliasName) {
+        return getIndicesFromAliasName(aliasName, null, null)
+    }
+
+    /**
+     * @param aliasName
+     * @param comparator comparator for index names
+     * @return indices for alias with given name
+     */
+    public Collection<String> getIndicesFromAliasName(String aliasName, String indexName, Comparator<String> comparator) {
         IndicesAdminClient iac = client.admin().indices();
-        ImmutableOpenMap<String, List<AliasMetaData>> map = iac.getAliases(new GetAliasesRequest(aliasName)).actionGet().getAliases();
+        GetAliasesResponse aliasResponse = iac.prepareGetAliases(aliasName).get()
+        ImmutableOpenMap<String, List<AliasMetaData>> map = aliasResponse.getAliases();
         final Set<String> allIndices = new HashSet<>();
+
         def iterator = map.iterator()
 
         while (iterator.hasNext()) {
             def item = iterator.next()
-            allIndices.add(item.key)
+            if (item.value != null && !item.value.isEmpty() || comparator != null && comparator.compare(item.key, indexName) < 0) {
+                allIndices.add(item.key)
+            }
         }
+
         return allIndices;
     }
 
@@ -228,24 +334,60 @@ class ElasticSearchHelper {
      * @param indexName
      */
     public void switchAliasToIndex(String aliasName, String indexName) {
+        switchAliasToIndex(aliasName, indexName, null)
+    }
+
+    /**
+     * Switches alias to new index and removes old indexes
+     * @param aliasName
+     * @param indexName
+     * @param comparator comparator for index names
+     */
+    public void switchAliasToIndex(String aliasName, String indexName, Comparator<String> dropComporator) {
+
         IndicesAdminClient indices = client.admin().indices();
         try {
-            Collection<String> indicesToDrop = getIndicesFromAliasName(aliasName);
+            Collection<String> indicesToDrop = getIndicesFromAliasName(aliasName, indexName, dropComporator);
+
             IndicesAliasesRequestBuilder requestBuilder = indices.prepareAliases();
             requestBuilder.addAlias(indexName, aliasName);
-
             for (String indexToDrop : indicesToDrop) {
                 requestBuilder.removeIndex(indexToDrop);
             }
 
-            IndicesAliasesResponse response = requestBuilder.execute().get();
+            IndicesAliasesResponse response = requestBuilder.execute().actionGet();
             if (!response.isAcknowledged()) {
                 logger.warn("Unable to switch alias $aliasName to use index $indexName");
             }
+
         } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace()
             logger.error("Unable to switch alias to: $indexName cause: ${e.toString()}");
         }
         logger.info("Alias $aliasName has been switched to index $indexName")
+    }
+    /**
+    * Creates index
+    * @param name index name
+    * @param fieldsLimit total_fields.limit property
+    */
+    public void createIndex(String name, int fieldsLimit) {
+        CreateIndexResponse cir = client.admin().indices()
+                .prepareCreate(name)
+                .setSettings(Settings.builder().put("index.mapping.total_fields.limit", fieldsLimit))
+                .execute().actionGet();
+    }
+
+    /**
+     * Returns search builder for default index and doc type
+     * @return search builder
+     */
+    public SearchRequestBuilder prepareSearch() {
+        return client.prepareSearch(defaultIndex).setTypes(defaultType)
+    }
+
+    public IndexRequestBuilder prepareIndex(String name, String id, String source) {
+        return client.prepareIndex(name, defaultType, id).setSource(source, XContentType.JSON)
     }
 
     void close() {
@@ -256,6 +398,8 @@ class ElasticSearchHelper {
         client = null;
         logger.info('Closed')
     }
+
+
 }
 
 
