@@ -231,7 +231,7 @@ class ElasticSearchHelper {
      * @param aliasName
      * @return indices for alias with given name
      */
-    public Collection<String> getIndicesFromAliasName(String aliasName) {
+    Collection<String> getIndicesFromAliasName(String aliasName) {
         return getIndicesFromAliasName(aliasName, null, null)
     }
 
@@ -240,7 +240,7 @@ class ElasticSearchHelper {
      * @param comparator comparator for index names
      * @return indices for alias with given name
      */
-    public Collection<String> getIndicesFromAliasName(String aliasName, String indexName, Comparator<String> comparator) {
+    Collection<String> getIndicesFromAliasName(String aliasName, String indexName, Comparator<String> comparator) {
         IndicesAdminClient iac = client.admin().indices();
         GetAliasesResponse aliasResponse = iac.prepareGetAliases(aliasName).get()
         ImmutableOpenMap<String, List<AliasMetaData>> map = aliasResponse.getAliases();
@@ -263,7 +263,7 @@ class ElasticSearchHelper {
      * @param aliasName
      * @param indexName
      */
-    public void switchAliasToIndex(String aliasName, String indexName) {
+    void switchAliasToIndex(String aliasName, String indexName) {
         switchAliasToIndex(aliasName, indexName, null)
     }
 
@@ -273,7 +273,7 @@ class ElasticSearchHelper {
      * @param indexName
      * @param comparator comparator for index names
      */
-    public void switchAliasToIndex(String aliasName, String indexName, Comparator<String> dropComporator) {
+    void switchAliasToIndex(String aliasName, String indexName, Comparator<String> dropComporator) {
 
         IndicesAdminClient indices = client.admin().indices();
         try {
@@ -301,7 +301,7 @@ class ElasticSearchHelper {
     * @param name index name
     * @param settings builder for settings
     */
-    public void createIndex(String name, Settings.Builder settings) {
+    void createIndex(String name, Settings.Builder settings) {
         CreateIndexResponse cir = client.admin().indices()
                 .prepareCreate(name)
                 .setSettings(settings)
@@ -312,11 +312,11 @@ class ElasticSearchHelper {
      * Returns search builder for default index and doc type
      * @return search builder
      */
-    public SearchRequestBuilder prepareSearch(String indexName) {
+    SearchRequestBuilder prepareSearch(String indexName) {
         return client.prepareSearch(indexName).setTypes(defaultType)
     }
 
-    public IndexRequestBuilder prepareIndex(String name, String id, String source) {
+    IndexRequestBuilder prepareIndex(String name, String id, String source) {
         return client.prepareIndex(name, defaultType, id).setSource(source, XContentType.JSON)
     }
 
