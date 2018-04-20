@@ -2,8 +2,8 @@ package com.epam.esp.elasticsearch.comparator
 
 class TimestampIndexNameComparator implements Comparator<String> {
 
-    long offset
-    String delimiter
+    private long offset
+    private String delimiter
 
     public TimestampIndexNameComparator(long offsetMillis, String delimiter) {
         this.offset = offsetMillis

@@ -48,15 +48,12 @@ import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
 
 class ElasticSearchHelper {
-    final static Logger logger = LoggerFactory.getLogger(ElasticSearchHelper.class)
-    String defaultIndex = null
+    private final static Logger logger = LoggerFactory.getLogger(ElasticSearchHelper.class)
     //The preferred type name is _doc, so that index APIs have the same path as they will have in 7.0
-    String defaultType = "_doc"
-    PreBuiltTransportClient client;
+    private String defaultType = "_doc"
+    private PreBuiltTransportClient client;
 
-    ElasticSearchHelper(String clusterName, String login, String password, String defaultIndex, nodes) {
-
-        this.defaultIndex = defaultIndex;
+    ElasticSearchHelper(String clusterName, String login, String password, nodes) {
 
         def settingsBuilder = Settings.builder()
         if (clusterName == null) {
@@ -90,37 +87,7 @@ class ElasticSearchHelper {
 
     @Deprecated
     ElasticSearchHelper(String clusterName, String login, String password, String defaultIndex, String defaultType, nodes) {
-        this.defaultIndex = defaultIndex;
-        this.defaultType = defaultType
-
-        def settingsBuilder = Settings.builder()
-        if (clusterName == null) {
-            settingsBuilder.put('cluster.name', 'elasticsearch')
-        } else {
-            settingsBuilder.put('cluster.name', clusterName)
-        }
-
-        if (login != null) {
-            settingsBuilder.put('transport.ping_schedule', '5s')
-                    .put('xpack.security.transport.ssl.enabled', false)
-                    .put('xpack.security.user', "${login}:${password}".toString())
-                    .put("request.headers.X-Found-Cluster", clusterName)
-
-            //String token = basicAuthHeaderValue(login, new SecureString(password.toCharArray()));
-            //client.filterWithHeader(Collections.singletonMap("Authorization", token)).prepareSearch().get();
-        }
-
-        def settings = settingsBuilder.build()
-
-        if (login != null) {
-            client = new PreBuiltXPackTransportClient(settings)
-        } else {
-            client = new PreBuiltTransportClient(settings)
-        }
-
-        nodes.each { key, value ->
-            client = client.addTransportAddress(new TransportAddress(InetAddress.getByName(key), value))
-        }
+        throw new UnsupportedOperationException("This is not supported since elasticsearch version 6.2")
     }
 
     /**
@@ -143,9 +110,9 @@ class ElasticSearchHelper {
      * @param documentId
      * @return true if document with given id exists
      */
+    @Deprecated
     boolean isDocumentExists(String documentId) {
-        def document = getDocumentById(documentId)
-        return document.exists
+        throw new UnsupportedOperationException("This is not supported since elasticsearch version 6.2")
     }
 
     /**
@@ -157,19 +124,7 @@ class ElasticSearchHelper {
      */
     @Deprecated
     boolean isDocumentExists(String indexName, String documentType, String documentId) {
-        def document = getDocumentById(indexName, documentType, documentId)
-        return document.exists
-    }
-
-    /**
-     *
-     * @param indexName
-     * @param documentId
-     * @return true if document exists
-     */
-    boolean isDocumentExists(String indexName, String documentId) {
-        def document = getDocumentById(indexName, documentId)
-        return document.exists
+        throw new UnsupportedOperationException("This is not supported since elasticsearch version 6.2")
     }
 
     /**
@@ -177,8 +132,9 @@ class ElasticSearchHelper {
      * @param documentId
      * @return document with given ID
      */
+    @Deprecated
     def getDocumentById(String documentId) {
-        getDocumentById(defaultIndex, documentId)
+        throw new UnsupportedOperationException("This is not supported since elasticsearch version 6.2")
     }
 
     /**
@@ -190,7 +146,7 @@ class ElasticSearchHelper {
      */
     @Deprecated
     def getDocumentById(String indexName, String documentType, String documentId) {
-        return client.prepareGet(indexName, documentType, documentId).get()
+        throw new UnsupportedOperationException("This is not supported since elasticsearch version 6.2")
     }
 
     /**
@@ -210,7 +166,7 @@ class ElasticSearchHelper {
      * @return true if 'issue' update date is the same
      */
     boolean isInSync(String documentId, date) {
-        return isInSync(documentId, date);
+        throw new UnsupportedOperationException("This is not supported since elasticsearch version 6.2")
     }
 
     /**
@@ -222,26 +178,17 @@ class ElasticSearchHelper {
      */
     @Deprecated
     boolean isInSync(String documentId, String documentType, DateTime date) {
-        GetResponse response = client.prepareGet().setId(documentId).setIndex(defaultIndex).setType(documentType).setFetchSource('fields.updated', null).execute().actionGet()
-        if (response.exists) {
-            def updated = response.sourceAsMap.fields.updated
-            if (updated != null) {
-                DateTimeFormatter dtf = DateTimeFormat.forPattern(JiraHelper.JIRA_DATE_FORMAT)
-                DateTime eDate = dtf.parseDateTime((String) updated)
-                //println key + "\n\r" + date + ">>\n\r" + eDate
-                return date.getMillis() <= eDate.getMillis();
-            }
-        }
-        return false;
+        throw new UnsupportedOperationException("This is not supported since elasticsearch version 6.2")
     }
     /**
      * JIRA 'issue' document specific
+     * @param indexName index name
      * @param documentId
      * @param date
      * @return true if 'issue' update date is the same
      */
-    boolean isInSync(String documentId, DateTime date) {
-        GetResponse response = client.prepareGet().setId(documentId).setIndex(defaultIndex).setType(defaultType).setFetchSource('fields.updated', null).execute().actionGet()
+    boolean isJiraIssueInSync(String indexName, String documentId, DateTime date) {
+        GetResponse response = client.prepareGet().setId(documentId).setIndex(indexName).setType(defaultType).setFetchSource('fields.updated', null).execute().actionGet()
         if (response.exists) {
             def updated = response.sourceAsMap.fields.updated
             if (updated != null) {
@@ -253,35 +200,18 @@ class ElasticSearchHelper {
         }
         return false;
     }
-    /**
-     *
-     * @param documentId
-     * @param documentSrc
-     * @return
-     */
+
+    @Deprecated
     String updateItem(String documentId, String documentSrc) {
-        return updateItem(defaultIndex, documentId, documentSrc)
+        throw new UnsupportedOperationException("This is not supported since elasticsearch version 6.2")
     }
 
     @Deprecated
     String updateItem(String indexName, String documentType, String documentId, String documentSrc) {
-        def jsonSlurper = new JsonSlurper()
-        def object = jsonSlurper.parseText(documentSrc)
-        def message = ''
-        if ((object instanceof Map) && !(documentId.equals(object.get("key")) || documentId.equals(object.get("id")))) {
-            message += "$documentId Got wrong JSON from Jira. ERROR!\n"
-            return message
-        } else {
-            message += "$documentId ! $documentType ! JSON is valid, "
-        }
-        def response = client.prepareIndex(indexName, documentType, documentId).setSource(documentSrc, XContentType.JSON).get()
-        message += "version=$response.version\n"
-        return message
+        throw new UnsupportedOperationException("This is not supported since elasticsearch version 6.2")
     }
 
     String updateItem(String indexName, String documentId, String documentSrc) {
-        def jsonSlurper = new JsonSlurper()
-        def object = jsonSlurper.parseText(documentSrc)
         def message = ''
         def response = client.prepareIndex(indexName, defaultType, documentId).setSource(documentSrc, XContentType.JSON).get()
         message += "version=$response.version\n"
@@ -369,12 +299,12 @@ class ElasticSearchHelper {
     /**
     * Creates index
     * @param name index name
-    * @param fieldsLimit total_fields.limit property
+    * @param settings builder for settings
     */
-    public void createIndex(String name, int fieldsLimit) {
+    public void createIndex(String name, Settings.Builder settings) {
         CreateIndexResponse cir = client.admin().indices()
                 .prepareCreate(name)
-                .setSettings(Settings.builder().put("index.mapping.total_fields.limit", fieldsLimit))
+                .setSettings(settings)
                 .execute().actionGet();
     }
 
@@ -382,8 +312,8 @@ class ElasticSearchHelper {
      * Returns search builder for default index and doc type
      * @return search builder
      */
-    public SearchRequestBuilder prepareSearch() {
-        return client.prepareSearch(defaultIndex).setTypes(defaultType)
+    public SearchRequestBuilder prepareSearch(String indexName) {
+        return client.prepareSearch(indexName).setTypes(defaultType)
     }
 
     public IndexRequestBuilder prepareIndex(String name, String id, String source) {

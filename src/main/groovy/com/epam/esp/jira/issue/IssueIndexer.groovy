@@ -40,6 +40,7 @@ class IssueIndexer implements Runnable {
     boolean force
     def issuesCount
     def issueDocType
+    def indexName
     boolean isIssueDetailStashAdding = false
 
     final static Logger logger = LoggerFactory.getLogger(IssueIndexer.class)
@@ -55,8 +56,9 @@ class IssueIndexer implements Runnable {
      * @param force - do not check if the issue is up to date in Elasticsearch index, force re-index
      * @param issuesCount
      * @param issueDocType
+     * @param indexName
      */
-    IssueIndexer(JiraHelper jiraHelper, ElasticSearchHelper elasticSearchHelper, Issue issue, fields, boolean force, issuesCount, issueDocType) {
+    IssueIndexer(JiraHelper jiraHelper, ElasticSearchHelper elasticSearchHelper, Issue issue, fields, boolean force, issuesCount, String issueDocType, String indexName) {
         this.jiraHelper = jiraHelper
         this.elasticSearchHelper = elasticSearchHelper
         this.issue = issue
@@ -64,6 +66,7 @@ class IssueIndexer implements Runnable {
         this.force = force
         this.issuesCount = issuesCount
         this.issueDocType = issueDocType
+        this.indexName = indexName
     }
 
     /**
@@ -74,22 +77,26 @@ class IssueIndexer implements Runnable {
      * @param fields - list of fields used
      * @param force - do not check if the issue is up to date in Elasticsearch index, force re-index
      * @param issuesCount
+     * @param issueDocType
+     * @param indexName
      * @param isIssueDetailStashAdding - true if need to index detailStash
      */
-    IssueIndexer(JiraHelper jiraHelper, ElasticSearchHelper elasticSearchHelper, Issue issue, fields, boolean force, issuesCount, boolean isIssueDetailStashAdding) {
+    IssueIndexer(JiraHelper jiraHelper, ElasticSearchHelper elasticSearchHelper, Issue issue, fields, boolean force, issuesCount, boolean isIssueDetailStashAdding, String issueDocType, String indexName) {
         this.jiraHelper = jiraHelper
         this.elasticSearchHelper = elasticSearchHelper
         this.issue = issue
         this.fields = fields
         this.force = force
         this.issuesCount = issuesCount
+        this.issueDocType = issueDocType
+        this.indexName = indexName
         this.isIssueDetailStashAdding = isIssueDetailStashAdding
     }
 
     @Override
     void run() {
         logMessage += "$issuesCount : "
-        if (force || !elasticSearchHelper.isInSync(issue.key, issue.updateDate)) {
+        if (force || !elasticSearchHelper.isJiraIssueInSync(indexName, issue.key, issue.updateDate)) {
             try {
                 def item = jiraHelper.getJsonFromUri(issue.self.toString() + EXPAND_PARAMS);
 
@@ -106,9 +113,9 @@ class IssueIndexer implements Runnable {
                 issueJson << [docType: issueDocType]
 
                 logMessage += ' got result from API -> '
-                logMessage += elasticSearchHelper.updateItem("${issueDocType}_${issue.key}", JsonOutput.toJson(issueJson))
+                logMessage += elasticSearchHelper.updateItem(indexName, issue.key, JsonOutput.toJson(issueJson))
             } catch (Exception e) {
-                e.printStackTrace()
+                logger.error(e.getMessage(), e)
                 logMessage += "$e.message $issue.self  unable to index issue"
             }
         } else {
@@ -120,10 +127,10 @@ class IssueIndexer implements Runnable {
         def iterator = subIssues.issues.iterator()
         while (iterator.hasNext()) {
             Issue subtask = iterator.next()
-            if (force || !elasticSearchHelper.isInSync(subtask.key, subtask.updateDate)) {
+            if (force || !elasticSearchHelper.isJiraIssueInSync(indexName, subtask.key, subtask.updateDate)) {
                 try {
                     def item = jiraHelper.getJsonFromUri(subtask.self.toString() + EXPAND_PARAMS);
-                    logMessage += ' | -' + elasticSearchHelper.updateItem(subtask.key, item)
+                    logMessage += ' | -' + elasticSearchHelper.updateItem(indexName, subtask.key, item)
                 } catch (Exception e) {
                     logMessage += " |- ${subtask.self.toString()} unable to get JSON for issue"
                 }
