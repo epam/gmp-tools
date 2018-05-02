@@ -109,11 +109,8 @@ class IssueIndexer implements Runnable {
                     }
                 }
 
-                def issueJson = new JsonSlurper().parseText(item)
-                issueJson << [docType: issueDocType]
+                updateIssue(item)
 
-                logMessage += ' got result from API -> '
-                logMessage += elasticSearchHelper.updateItem(indexName, issue.key, JsonOutput.toJson(issueJson))
             } catch (Exception e) {
                 logger.error(e.getMessage(), e)
                 logMessage += "$e.message $issue.self  unable to index issue"
@@ -122,16 +119,16 @@ class IssueIndexer implements Runnable {
             logMessage += "$issue.key is up to date, skipping...\n"
         }
 
-        def subIssues = jiraHelper.findIssuesByJql(String.format(SUB_ISSUES_SEARCH_QUERY, issue.key), BATCH_SIZE, 0, fields);
-
+        def subIssues = jiraHelper.findIssuesByJql(String.format(SUB_ISSUES_SEARCH_QUERY, issue.key), BATCH_SIZE, 0, fields)
         def iterator = subIssues.issues.iterator()
         while (iterator.hasNext()) {
             Issue subtask = iterator.next()
             if (force || !elasticSearchHelper.isJiraIssueInSync(indexName, subtask.key, subtask.updateDate)) {
                 try {
                     def item = jiraHelper.getJsonFromUri(subtask.self.toString() + EXPAND_PARAMS);
-                    logMessage += ' | -' + elasticSearchHelper.updateItem(indexName, subtask.key, item)
+                    updateIssue(item)
                 } catch (Exception e) {
+                    e.printStackTrace()
                     logMessage += " |- ${subtask.self.toString()} unable to get JSON for issue"
                 }
             } else {
@@ -140,5 +137,12 @@ class IssueIndexer implements Runnable {
         }
         logMessage += "\n"
         logger.info(logMessage)
+    }
+
+    private void updateIssue(String issue) {
+        def issueJson = new JsonSlurper().parseText(issue)
+        issueJson << [docType: issueDocType]
+        logMessage += ' got result from API -> '
+        logMessage += elasticSearchHelper.updateItem(indexName, issueJson['key'], JsonOutput.toJson(issueJson))
     }
 }

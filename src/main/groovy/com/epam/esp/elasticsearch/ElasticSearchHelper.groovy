@@ -22,7 +22,6 @@ import org.elasticsearch.action.admin.indices.alias.IndicesAliasesResponse
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesResponse
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse
-import org.elasticsearch.action.bulk.BulkRequestBuilder
 import org.elasticsearch.action.get.GetResponse
 import org.elasticsearch.action.index.IndexRequestBuilder
 import org.elasticsearch.action.search.SearchRequestBuilder
