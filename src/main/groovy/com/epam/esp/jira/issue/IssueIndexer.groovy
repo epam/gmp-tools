@@ -97,7 +97,8 @@ class IssueIndexer implements Runnable {
 
     @Override
     void run() {
-        logMessage += "${counter.processIssue(issue.key)} : "
+        logMessage += "${issue.key} : "
+        counter.processIssue(issue.key)
         if (force || !elasticSearchHelper.isJiraIssueInSync(indexName, issue.key, issue.updateDate)) {
             try {
                 def item = jiraHelper.getJsonFromUri(issue.self.toString() + EXPAND_PARAMS);
@@ -125,7 +126,8 @@ class IssueIndexer implements Runnable {
         def iterator = subIssues.issues.iterator()
         while (iterator.hasNext()) {
             Issue subtask = iterator.next()
-            logMessage += " |- ${counter.processSubIssue(subtask.key)} : "
+            counter.processSubIssue(subtask.key)
+            logMessage += " |- ${subtask.key} : "
             if (force || !elasticSearchHelper.isJiraIssueInSync(indexName, subtask.key, subtask.updateDate)) {
                 try {
                     def item = jiraHelper.getJsonFromUri(subtask.self.toString() + EXPAND_PARAMS);
@@ -142,7 +144,7 @@ class IssueIndexer implements Runnable {
         }
         logMessage += "\n"
         logger.info(logMessage)
-        logger.info(counter.getUpdatedReport())
+        logger.info("\n" + counter.getUpdatedReport())
     }
 
     private void updateIssue(String issue) {
