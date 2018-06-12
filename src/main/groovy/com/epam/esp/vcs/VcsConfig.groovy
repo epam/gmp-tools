@@ -23,7 +23,7 @@ class VcsConfig {
     def user
     def password
 
-    final static String DEFAULT_PATH = "default"
+    final static String DEFAULT_PATH = 'default'
 
     VcsConfig(String path) {
         this.projectPathMap = [DEFAULT_PATH: path]

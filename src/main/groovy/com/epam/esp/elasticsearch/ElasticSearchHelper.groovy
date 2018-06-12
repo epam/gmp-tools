@@ -16,22 +16,20 @@
 package com.epam.esp.elasticsearch
 
 import com.epam.esp.jira.JiraHelper
-import groovy.json.JsonSlurper
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequestBuilder
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesResponse
-import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesResponse
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse
 import org.elasticsearch.action.get.GetResponse
 import org.elasticsearch.action.index.IndexRequestBuilder
 import org.elasticsearch.action.search.SearchRequestBuilder
-import org.elasticsearch.client.Client
 import org.elasticsearch.client.IndicesAdminClient
 import org.elasticsearch.client.Requests
 import org.elasticsearch.cluster.metadata.AliasMetaData
 import org.elasticsearch.cluster.metadata.IndexMetaData
 import org.elasticsearch.common.collect.ImmutableOpenMap
 import org.elasticsearch.common.settings.Settings
+import org.elasticsearch.common.settings.Settings.Builder
 import org.elasticsearch.common.transport.TransportAddress
 import org.elasticsearch.common.xcontent.XContentType
 import org.elasticsearch.transport.client.PreBuiltTransportClient
@@ -41,7 +39,6 @@ import org.joda.time.format.DateTimeFormat
 import org.joda.time.format.DateTimeFormatter
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import java.util.Comparator
 
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
@@ -50,10 +47,24 @@ class ElasticSearchHelper {
     private final static Logger logger = LoggerFactory.getLogger(ElasticSearchHelper.class)
     //The preferred type name is _doc, so that index APIs have the same path as they will have in 7.0
     private String defaultType = "_doc"
-    private PreBuiltTransportClient client;
+    protected PreBuiltTransportClient client;
 
     ElasticSearchHelper(String clusterName, String login, String password, nodes) {
 
+        def settings = assembleSettings(clusterName, login, password, nodes).build()
+
+        if (login != null) {
+            client = new PreBuiltXPackTransportClient(settings)
+        } else {
+            client = new PreBuiltTransportClient(settings)
+        }
+
+        nodes.each { key, value ->
+            client = client.addTransportAddress(new TransportAddress(InetAddress.getByName(key), value))
+        }
+    }
+
+    protected Builder assembleSettings(String clusterName, String login, String password, nodes) {
         def settingsBuilder = Settings.builder()
         if (clusterName == null) {
             settingsBuilder.put('cluster.name', 'elasticsearch')
@@ -65,23 +76,12 @@ class ElasticSearchHelper {
             settingsBuilder.put('transport.ping_schedule', '5s')
                     .put('xpack.security.transport.ssl.enabled', false)
                     .put('xpack.security.user', "${login}:${password}".toString())
-                    .put("request.headers.X-Found-Cluster", clusterName)
+                    .put('request.headers.X-Found-Cluster', clusterName)
 
             //String token = basicAuthHeaderValue(login, new SecureString(password.toCharArray()));
             //client.filterWithHeader(Collections.singletonMap("Authorization", token)).prepareSearch().get();
         }
-
-        def settings = settingsBuilder.build()
-
-        if (login != null) {
-            client = new PreBuiltXPackTransportClient(settings)
-        } else {
-            client = new PreBuiltTransportClient(settings)
-        }
-
-        nodes.each { key, value ->
-            client = client.addTransportAddress(new TransportAddress(InetAddress.getByName(key), value))
-        }
+        return settingsBuilder
     }
 
     @Deprecated
@@ -296,10 +296,10 @@ class ElasticSearchHelper {
         logger.info("Alias $aliasName has been switched to index $indexName")
     }
     /**
-    * Creates index
-    * @param name index name
-    * @param settings builder for settings
-    */
+     * Creates index
+     * @param name index name
+     * @param settings builder for settings
+     */
     void createIndex(String name, Settings.Builder settings) {
         CreateIndexResponse cir = client.admin().indices()
                 .prepareCreate(name)
