@@ -15,29 +15,36 @@
 
 package com.epam.esp.vcs
 
-import com.epam.esp.vcs.dto.Commit
+import com.epam.esp.vcs.git.GitException;
 
-abstract class VcsHelper {
+class VcsConfig {
+    Map projectPathMap
+    def url
+    def user
+    def password
 
-    VcsConfig config
+    final static String DEFAULT_PATH = 'default'
 
-
-    VcsHelper(VcsConfig config) {
-        this.config = config
+    VcsConfig(String path) {
+        this.projectPathMap = [DEFAULT_PATH: path]
     }
 
-    List<Commit> getCommitDiff(Object srcBranch, Object destBranch) {
-        return getCommitDiff(VcsConfig.getDEFAULT_PATH(), srcBranch, destBranch)
+    VcsConfig(Map projectPathMap)    {
+        this.projectPathMap = projectPathMap
     }
 
-    /**
-     *
-     * @param project
-     * @param srcBranch
-     * @param destBranch
-     * @return List < Commit >  for two revisions $srcBranch $destBranch
-     */
-    abstract List<Commit> getCommitDiff(project, srcBranch, destBranch)
+    VcsConfig(String path, url, user, password) {
+        this.projectPathMap = [DEFAULT_PATH: path]
+        this.url = url
+        this.user = user
+        this.password = password
+    }
 
-
+    String getPath(String project) {
+        String path = projectPathMap.getOrDefault(project.toLowerCase(), projectPathMap.get(DEFAULT_PATH))
+        if (path == null) {
+            throw new GitException("Path to repository must not be null")
+        }
+        return path
+    }
 }

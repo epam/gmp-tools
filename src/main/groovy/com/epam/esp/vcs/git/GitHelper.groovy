@@ -16,6 +16,7 @@
 package com.epam.esp.vcs.git
 
 import com.epam.dep.esp.common.OS
+import com.epam.esp.vcs.VcsConfig
 import com.epam.esp.vcs.VcsHelper
 import com.epam.esp.vcs.dto.Commit
 import org.slf4j.Logger
@@ -23,27 +24,25 @@ import org.slf4j.LoggerFactory
 
 import java.util.regex.Matcher
 
-class GitHelper implements VcsHelper {
-
-    def vcsConfig
-
-    GitHelper(vcsConfig) {
-        this.vcsConfig = vcsConfig
-    }
+class GitHelper extends VcsHelper {
 
     static def COMMIT_PATTERN = '"?\\[([^]]*)\\]-\\[([^\\]]*)\\]-@\\[([^\\]]*)\\]-(.*)'
     final static Logger logger = LoggerFactory.getLogger(GitHelper.class)
 
-    /**
+    GitHelper(VcsConfig config) {
+        super(config)
+    }
+
+   /**
      *
      * @param hash
      * @return git diff-tree result strings
      */
-    List<String> getCommitInfo(hash) {
+    private List<String> getCommitInfo(project, hash) {
         OS os = OS.getOs()
         List<String> params = ['git', 'diff-tree', '--no-commit-id', '--name-only', '-r', hash].asList()
         List<String> processOut = new ArrayList<String>()
-        def result = os.execCommandLine(params, processOut, vcsConfig.folder.toString(), 600)
+        def result = os.execCommandLine(params, processOut, config.getPath(project), 600)
         if (result == 0) {
             return processOut
         } else {
@@ -58,11 +57,11 @@ class GitHelper implements VcsHelper {
      * @param destBranch
      * @return List < Commit >  for  "git log srcBranch..destBranch" cmdline execution or throws GitException
      */
-    List<Commit> getCommitDiff(srcBranch, destBranch) {
+    List<Commit> getCommitDiff(project, srcBranch, destBranch) {
         OS os = OS.getOs()
         List<String> params = ['git', 'log', '--pretty=format:"[%cD]-[%H]-@[%an]-%s"', "${srcBranch}..${destBranch}".toString()].asList()
         List<String> processOut = new ArrayList<String>()
-        def result = os.execCommandLine(params, processOut, vcsConfig.folder.toString(), 600)
+        def result = os.execCommandLine(params, processOut, config.getPath(project), 600)
         def commitList = new ArrayList<Commit>()
         if (result == 0) {
             if (logger.isInfoEnabled()) {
@@ -76,7 +75,7 @@ class GitHelper implements VcsHelper {
                     commit.hash = matcher.group(2)
                     commit.author = matcher.group(3)
                     commit.comment = matcher.group(4)
-                    commit.files = getCommitInfo(commit.hash)
+                    commit.files = getCommitInfo(project, commit.hash)
                     if (commit.files.size() != 0) {
                         commitList.add(commit)
                     }

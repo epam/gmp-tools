@@ -18,7 +18,6 @@ package com.epam.esp.confluence
 import com.epam.dep.esp.common.json.JsonMapper
 import com.epam.esp.confluence.dto.NewConfPageDto
 import org.apache.commons.io.IOUtils
-import org.apache.commons.lang.StringUtils
 import org.apache.http.HttpEntity
 import org.apache.http.HttpResponse
 import org.apache.http.client.HttpClient
@@ -64,7 +63,7 @@ class ConfluenceHelper {
      * @throws UnsupportedEncodingException
      */
     String getContentRestUrl(Long contentId, String[] expansions) throws UnsupportedEncodingException {
-        final String expand = URLEncoder.encode(StringUtils.join(expansions, ","), ENCODING)
+        final String expand = URLEncoder.encode(expansions.join(','), ENCODING)
         return String.format("%s/rest/api/content/%s?expand=%s", baseUrl, contentId, expand)
     }
 

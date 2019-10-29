@@ -23,10 +23,10 @@ import com.atlassian.jira.rest.client.api.domain.IssueField
 import com.atlassian.jira.rest.client.api.domain.IssueFieldId
 import com.atlassian.jira.rest.client.api.domain.SearchResult
 import com.atlassian.jira.rest.client.internal.async.AsynchronousJiraRestClientFactory
-import com.atlassian.util.concurrent.Promise
 import com.epam.dep.esp.common.web.Web
 import com.epam.esp.jira.dto.JiraIssue
 import com.epam.esp.vcs.dto.Commit
+import io.atlassian.util.concurrent.Promise
 import net.sf.ehcache.Cache
 import net.sf.ehcache.CacheManager
 import net.sf.ehcache.Element

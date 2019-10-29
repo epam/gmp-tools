@@ -16,30 +16,34 @@
 package com.epam.esp.vcs.svn
 
 import com.epam.dep.esp.common.OS
+import com.epam.esp.vcs.VcsConfig
 import com.epam.esp.vcs.VcsHelper
 import com.epam.esp.vcs.dto.Commit
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-class SvnHelper implements VcsHelper {
+class SvnHelper extends VcsHelper {
     final static Logger logger = LoggerFactory.getLogger(SvnHelper.class)
-    def vcsConfig
 
     SvnHelper(vcsConfig) {
-        this.vcsConfig = vcsConfig
+        super(
+                new VcsConfig(
+                        vcsConfig.folder.toString(),
+                        vcsConfig.url.toString(),
+                        vcsConfig.user.toString(),
+                        vcsConfig.password.toString()))
     }
 
-    /**
-     *
-     * @param revisionFrom
-     * @param revisionTo
-     * @return List < Commit >  diff for $revisionFrom $revisionTo
-     */
-    List<Commit> getCommitDiff(revisionFrom, revisionTo) {
+    SvnHelper(VcsConfig config) {
+        super(config)
+    }
+
+    @Override
+    List<Commit> getCommitDiff(project, srcBranch, destBranch) {
         OS os = OS.getOs()
-        List<String> params = ['svn', 'log', vcsConfig.url, '--xml', "-r${revisionFrom}:${revisionTo}".toString(), '--username', vcsConfig.user, '--password', vcsConfig.password].asList()
+        List<String> params = ['svn', 'log', config.url, '--xml', "-r${revisionFrom}:${revisionTo}".toString(), '--username', config.user, '--password', config.password].asList()
         List<String> processOut = new ArrayList<String>()
-        def result = os.execCommandLine(params, processOut, vcsConfig.folder.toString(), 600)   //.join()
+        def result = os.execCommandLine(params, processOut, config.getPath(project), 600)   //.join()
         def commitList = new ArrayList<Commit>()
 
         if (result == 0) {

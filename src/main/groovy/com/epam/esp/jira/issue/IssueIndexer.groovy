@@ -18,15 +18,19 @@ package com.epam.esp.jira.issue
 import com.atlassian.jira.rest.client.api.domain.Issue
 import com.epam.esp.elasticsearch.ElasticSearchHelper
 import com.epam.esp.jira.JiraHelper
+import com.epam.esp.jira.dto.JiraIssueProcessCounter
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Class is used for issue indexing
  * TODO need to be re-factored
  */
 class IssueIndexer implements Runnable {
-    static final def BATCH_SIZE = 100
     static final String EXPAND_PARAMS = '?expand=changelog'
     static final String SUB_ISSUES_SEARCH_QUERY = "parent=%s";
     static final String URL_DEV_STATUS = 'rest/dev-status/latest/issue/detail'
@@ -36,7 +40,9 @@ class IssueIndexer implements Runnable {
     Issue issue
     def fields
     boolean force
-    def issuesCount
+    JiraIssueProcessCounter counter
+    def issueDocType
+    def indexName
     boolean isIssueDetailStashAdding = false
 
     final static Logger logger = LoggerFactory.getLogger(IssueIndexer.class)
@@ -50,15 +56,19 @@ class IssueIndexer implements Runnable {
      * @param issue
      * @param fields - list of fields used
      * @param force - do not check if the issue is up to date in Elasticsearch index, force re-index
-     * @param issuesCount
+     * @param counter - JiraIssueProcessCounter
+     * @param issueDocType
+     * @param indexName
      */
-    IssueIndexer(JiraHelper jiraHelper, ElasticSearchHelper elasticSearchHelper, Issue issue, fields, boolean force, issuesCount) {
+    IssueIndexer(JiraHelper jiraHelper, ElasticSearchHelper elasticSearchHelper, Issue issue, fields, boolean force, JiraIssueProcessCounter counter, String issueDocType, String indexName) {
         this.jiraHelper = jiraHelper
         this.elasticSearchHelper = elasticSearchHelper
         this.issue = issue
         this.fields = fields
         this.force = force
-        this.issuesCount = issuesCount
+        this.counter = counter
+        this.issueDocType = issueDocType
+        this.indexName = indexName
     }
 
     /**
@@ -68,23 +78,28 @@ class IssueIndexer implements Runnable {
      * @param issue
      * @param fields - list of fields used
      * @param force - do not check if the issue is up to date in Elasticsearch index, force re-index
-     * @param issuesCount
+     * @param counter - JiraIssueProcessCounter
+     * @param issueDocType
+     * @param indexName
      * @param isIssueDetailStashAdding - true if need to index detailStash
      */
-    IssueIndexer(JiraHelper jiraHelper, ElasticSearchHelper elasticSearchHelper, Issue issue, fields, boolean force, issuesCount, boolean isIssueDetailStashAdding) {
+    IssueIndexer(JiraHelper jiraHelper, ElasticSearchHelper elasticSearchHelper, Issue issue, fields, boolean force, JiraIssueProcessCounter counter, boolean isIssueDetailStashAdding, String issueDocType, String indexName) {
         this.jiraHelper = jiraHelper
         this.elasticSearchHelper = elasticSearchHelper
         this.issue = issue
         this.fields = fields
         this.force = force
-        this.issuesCount = issuesCount
+        this.counter = counter
+        this.issueDocType = issueDocType
+        this.indexName = indexName
         this.isIssueDetailStashAdding = isIssueDetailStashAdding
     }
 
     @Override
     void run() {
-        logMessage += "$issuesCount : "
-        if (force || !elasticSearchHelper.isInSync(issue.key, issue.updateDate)) {
+        logMessage += "${issue.key} : "
+        counter.processIssue(issue.key)
+        if (force || !elasticSearchHelper.isJiraIssueInSync(indexName, issue.key, issue.updateDate)) {
             try {
                 def item = jiraHelper.getJsonFromUri(issue.self.toString() + EXPAND_PARAMS);
                 if (isIssueDetailStashAdding && issue.id != null) {
@@ -95,32 +110,47 @@ class IssueIndexer implements Runnable {
                         logMessage += "$e.message $issue.self  unable to index issue detail stash"
                     }
                 }
-                logMessage += ' got result from API '
-                logMessage += elasticSearchHelper.updateItem(issue.key, item)
+
+                updateIssue(item)
+                counter.updateIssue()
             } catch (Exception e) {
+                logger.error(e.getMessage(), e)
                 logMessage += "$e.message $issue.self  unable to index issue"
             }
         } else {
+            counter.skipIssue()
             logMessage += "$issue.key is up to date, skipping...\n"
         }
 
-        def subIssues = jiraHelper.findIssuesByJql(String.format(SUB_ISSUES_SEARCH_QUERY, issue.key), BATCH_SIZE, 0, fields);
-
+        def subIssues = jiraHelper.findIssuesByJql(String.format(SUB_ISSUES_SEARCH_QUERY, issue.key), null, null, fields)
         def iterator = subIssues.issues.iterator()
         while (iterator.hasNext()) {
             Issue subtask = iterator.next()
-            if (force || !elasticSearchHelper.isInSync(subtask.key, subtask.updateDate)) {
+            counter.processSubIssue(subtask.key)
+            logMessage += " |- ${subtask.key} : "
+            if (force || !elasticSearchHelper.isJiraIssueInSync(indexName, subtask.key, subtask.updateDate)) {
                 try {
                     def item = jiraHelper.getJsonFromUri(subtask.self.toString() + EXPAND_PARAMS);
-                    logMessage += ' | -' + elasticSearchHelper.updateItem(subtask.key, item)
+                    updateIssue(item)
+                    counter.updateSubIssue()
                 } catch (Exception e) {
+                    logger.error(e.getMessage(), e)
                     logMessage += " |- ${subtask.self.toString()} unable to get JSON for issue"
                 }
             } else {
+                counter.skipSubIssue()
                 logMessage += " |- $subtask.key is up to date, skipping...\n"
             }
         }
         logMessage += "\n"
         logger.info(logMessage)
+        logger.info("\n" + counter.getUpdatedReport())
+    }
+
+    private void updateIssue(String issue) {
+        def issueJson = new JsonSlurper().parseText(issue)
+        issueJson << [docType: issueDocType]
+        logMessage += ' got result from API -> '
+        logMessage += elasticSearchHelper.updateItem(indexName, issueJson['key'], JsonOutput.toJson(issueJson))
     }
 }

@@ -13,31 +13,10 @@
  *  ***************************************************************************
  */
 
-package com.epam.esp.vcs
+package com.epam.esp.jira.issue
 
-import com.epam.esp.vcs.dto.Commit
+import org.elasticsearch.search.SearchHit
 
-abstract class VcsHelper {
-
-    VcsConfig config
-
-
-    VcsHelper(VcsConfig config) {
-        this.config = config
-    }
-
-    List<Commit> getCommitDiff(Object srcBranch, Object destBranch) {
-        return getCommitDiff(VcsConfig.getDEFAULT_PATH(), srcBranch, destBranch)
-    }
-
-    /**
-     *
-     * @param project
-     * @param srcBranch
-     * @param destBranch
-     * @return List < Commit >  for two revisions $srcBranch $destBranch
-     */
-    abstract List<Commit> getCommitDiff(project, srcBranch, destBranch)
-
-
+interface IssueMultiDocumentProcessor {
+    List<Map<String, Object>> multiResultProcess(SearchHit searchHit)
 }

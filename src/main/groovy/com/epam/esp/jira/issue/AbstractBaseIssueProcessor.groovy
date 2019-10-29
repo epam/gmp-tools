@@ -24,6 +24,7 @@ public abstract class AbstractBaseIssueProcessor implements IssueProcessor {
     public static final String UNKNOWN = 'unknown'
     public static final String ID_FIELD = 'id'
     public static final String PROJECT_FIELD = 'project'
+    public static final String DOC_TYPE_FIELD = 'docType'
     public static final String ISSUE_TYPE_FIELD = 'issueType'
     public static final String TIMESTAMP = 'timestamp'
     public static final String PRIORITY_FIELD = 'priority'
@@ -85,6 +86,7 @@ public abstract class AbstractBaseIssueProcessor implements IssueProcessor {
         document.put(PROJECT_FIELD, searchHit.sourceAsMap.fields.project.key)
         document.put(ISSUE_TYPE_FIELD, searchHit.sourceAsMap.fields.issuetype.name)
         document.put(PRIORITY_FIELD, getPriority(searchHit))
+        document.put(DOC_TYPE_FIELD, getEventName())
         return document
     }
 
