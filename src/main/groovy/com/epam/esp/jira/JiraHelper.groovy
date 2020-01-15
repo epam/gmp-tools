@@ -89,7 +89,7 @@ class JiraHelper {
 
     static def List<String> extractIssues(comment) {
         logger.info("comment='$comment'")
-        Matcher matcher = comment =~ JIRA_ISSUE_PATTERN
+        Matcher matcher = comment.toUpperCase() =~ JIRA_ISSUE_PATTERN
         def result = new ArrayList<String>()
         while (matcher.find()) {
             def issueId = matcher.group(0)
