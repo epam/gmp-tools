@@ -10,4 +10,5 @@ jobs:
         java-version: 8
     - uses: eskatos/gradle-command-action@v1
       with:
+        gradle-version: current
         arguments: build
