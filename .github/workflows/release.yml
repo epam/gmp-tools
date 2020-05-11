@@ -1,10 +1,7 @@
 name: Release
-on:
-  push:
-#    branches:
-#      - master
+on: [push]
 jobs:
-  gradle:
+  release:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
@@ -12,6 +9,22 @@ jobs:
       with:
         java-version: 8
     - uses: eskatos/gradle-command-action@v1
+      name: Build
       with:
         gradle-version: current
-        arguments: build upload
+        arguments: build
+    - name: Prepare to publish
+      run: |
+        echo '${{secrets.GPG_KEY_CONTENTS}}' | base64 -d > publish_key.gpg
+        gpg --quiet --batch --yes --decrypt --passphrase="${{secrets.SECRET_PASSPHRASE}}" \
+        --output secret.gpg publish_key.gpg
+    - uses: eskatos/gradle-command-action@v1
+      name: Publish artifact
+      with:
+        gradle-version: current
+        arguments: |
+          publish -Psigning.secretKeyRingFile=secret.gpg \
+          -Psigning.keyId=${{secrets.SIGNING_KEYID}} \
+          -Psigning.password=${{secrets.SIGNING_PASSWORD}} \
+          -PnexusUsername=${{secrets.NEXUS_USERNAME}} \
+          -PnexusPassword=${{secrets.NEXUS_PASSWORD}}
