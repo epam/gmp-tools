@@ -32,4 +32,4 @@ jobs:
           -Psigning.password=${{secrets.SIGNING_PASSWORD}}
           -PnexusUsername=${{secrets.NEXUS_USERNAME}}
           -PnexusPassword=${{secrets.NEXUS_PASSWORD}}
-          -Pversion=${{RELEASE_VERSION}}
+          -Pversion=${{env.RELEASE_VERSION}}
