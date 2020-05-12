@@ -12,14 +12,16 @@
  *  limitations under the License.
  *  ***************************************************************************
  */
+plugins {
+    id 'java'
+    id 'groovy'
+    id 'maven'
+    id 'signing'
+    id 'io.codearte.nexus-staging' version "${nexusStagingVersion}"
+}
 
 group group
 version version
-
-apply plugin: 'java'
-apply plugin: 'groovy'
-apply plugin: 'maven'
-apply plugin: 'signing'
 
 sourceCompatibility = JavaVersion.VERSION_1_8
 targetCompatibility = JavaVersion.VERSION_1_8
