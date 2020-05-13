@@ -38,7 +38,7 @@ jobs:
       with:
         gradle-version: current
         arguments: >
-          closeRepository promoteRepository
+          closeAndReleaseRepository
           -PnexusUsername=${{secrets.NEXUS_USERNAME}}
           -PnexusPassword=${{secrets.NEXUS_PASSWORD}}
           -Pversion=${{env.RELEASE_VERSION}}
