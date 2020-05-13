@@ -12,14 +12,16 @@
  *  limitations under the License.
  *  ***************************************************************************
  */
+plugins {
+    id 'java'
+    id 'groovy'
+    id 'maven'
+    id 'signing'
+    id 'io.codearte.nexus-staging' version '0.21.2'
+}
 
 group group
 version version
-
-apply plugin: 'java'
-apply plugin: 'groovy'
-apply plugin: 'maven'
-apply plugin: 'signing'
 
 sourceCompatibility = JavaVersion.VERSION_1_8
 targetCompatibility = JavaVersion.VERSION_1_8
@@ -126,6 +128,10 @@ uploadArchives {
             }
         }
     }
+}
+
+nexusStaging {
+    packageGroup = "com.epam.dep"
 }
 
 task javadocJar(type: Jar) {
