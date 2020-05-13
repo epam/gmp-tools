@@ -130,6 +130,10 @@ uploadArchives {
     }
 }
 
+nexusStaging {
+    stagingProfileId = "com.epam.dep"
+}
+
 task javadocJar(type: Jar) {
     classifier = 'javadoc'
     from javadoc
