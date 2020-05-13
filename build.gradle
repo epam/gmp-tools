@@ -131,7 +131,7 @@ uploadArchives {
 }
 
 nexusStaging {
-    stagingProfileId = "com.epam.dep"
+    packageGroup = "com.epam.dep"
 }
 
 task javadocJar(type: Jar) {
