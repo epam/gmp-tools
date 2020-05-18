@@ -1,44 +1,52 @@
 name: Release
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - master
+
 jobs:
-  release:
+  release-on-push:
     runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-    - uses: actions/checkout@master
-    - uses: actions/setup-java@master
-      with:
-        java-version: 8
-    - uses: eskatos/gradle-command-action@v1
-      name: Build
-      with:
-        gradle-version: current
-        arguments: build
-    - name: Prepare to publish
-      run: |
-        echo '${{secrets.GPG_KEY_CONTENTS}}' | base64 -d > publish_key.gpg
-        gpg --quiet --batch --yes --decrypt --passphrase="${{secrets.SECRET_PASSPHRASE}}" \
-        --output secret.gpg publish_key.gpg
-        echo "::set-env name=RELEASE_VERSION::${GITHUB_REF:11}"
-    - uses: eskatos/gradle-command-action@v1
-      name: Publish artifact
-      with:
-        gradle-version: current
-        arguments: >
-          upload -Psigning.secretKeyRingFile=secret.gpg
-          -Psigning.keyId=${{secrets.SIGNING_KEYID}}
-          -Psigning.password=${{secrets.SIGNING_PASSWORD}}
-          -PnexusUsername=${{secrets.NEXUS_USERNAME}}
-          -PnexusPassword=${{secrets.NEXUS_PASSWORD}}
-          -Pversion=${{env.RELEASE_VERSION}}
-    - uses: eskatos/gradle-command-action@v1
-      name: Nexus Release
-      with:
-        gradle-version: current
-        arguments: >
-          closeAndReleaseRepository
-          -PnexusUsername=${{secrets.NEXUS_USERNAME}}
-          -PnexusPassword=${{secrets.NEXUS_PASSWORD}}
-          -Pversion=${{env.RELEASE_VERSION}}
+      - id: release
+        uses: rymndhng/release-on-push-action@v0.14.0
+        with:
+          bump_version_scheme: patch
+      - name: Check Output Parameters
+        run: echo "Got version ${{ steps.release.outputs.tag_name }}"
+      - uses: actions/checkout@master
+      - uses: actions/setup-java@master
+        with:
+          java-version: 8
+      - uses: eskatos/gradle-command-action@v1
+        name: Build
+        with:
+          gradle-version: current
+          arguments: build
+      - name: Prepare to publish
+        run: |
+          echo '${{secrets.GPG_KEY_CONTENTS}}' | base64 -d > publish_key.gpg
+          gpg --quiet --batch --yes --decrypt --passphrase="${{secrets.SECRET_PASSPHRASE}}" \
+          --output secret.gpg publish_key.gpg
+      - uses: eskatos/gradle-command-action@v1
+        name: Publish artifact
+        with:
+          gradle-version: current
+          arguments: >
+            upload -Psigning.secretKeyRingFile=secret.gpg
+            -Psigning.keyId=${{secrets.SIGNING_KEYID}}
+            -Psigning.password=${{secrets.SIGNING_PASSWORD}}
+            -PnexusUsername=${{secrets.NEXUS_USERNAME}}
+            -PnexusPassword=${{secrets.NEXUS_PASSWORD}}
+            -Pversion=${{steps.release.outputs.tag_name}}
+      - uses: eskatos/gradle-command-action@v1
+        name: Nexus Release
+        with:
+          gradle-version: current
+          arguments: >
+            closeAndReleaseRepository
+            -PnexusUsername=${{secrets.NEXUS_USERNAME}}
+            -PnexusPassword=${{secrets.NEXUS_PASSWORD}}
+            -Pversion=${{steps.release.outputs.tag_name}}
