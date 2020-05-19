@@ -11,7 +11,7 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - id: release
-        uses: rymndhng/release-on-push-action@v0.14.0
+        uses: dmitriyStoyanov/release-on-push-action@master
         with:
           bump_version_scheme: patch
       - uses: actions/checkout@master
