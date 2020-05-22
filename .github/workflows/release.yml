@@ -15,21 +15,26 @@ jobs:
         with:
           bump_version_scheme: patch
       - uses: actions/checkout@master
+        if: ${{ steps.release.outputs.version != '' }}
       - uses: actions/setup-java@master
+        if: ${{ steps.release.outputs.version != '' }}
         with:
           java-version: 8
       - uses: eskatos/gradle-command-action@v1
         name: Build
+        if: ${{ steps.release.outputs.version != '' }}
         with:
           gradle-version: current
           arguments: build
       - name: Prepare to publish
+        if: ${{ steps.release.outputs.version != '' }}
         run: |
           echo '${{secrets.GPG_KEY_CONTENTS}}' | base64 -d > publish_key.gpg
           gpg --quiet --batch --yes --decrypt --passphrase="${{secrets.SECRET_PASSPHRASE}}" \
           --output secret.gpg publish_key.gpg
       - uses: eskatos/gradle-command-action@v1
         name: Publish artifact
+        if: ${{ steps.release.outputs.version != '' }}
         with:
           gradle-version: current
           arguments: >
@@ -41,6 +46,7 @@ jobs:
             -Pversion=${{steps.release.outputs.version}}
       - uses: eskatos/gradle-command-action@v1
         name: Nexus Release
+        if: ${{ steps.release.outputs.version != '' }}
         with:
           gradle-version: current
           arguments: >
