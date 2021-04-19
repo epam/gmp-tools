@@ -3,6 +3,8 @@ on:
   push:
     branches:
       - master
+env:
+  gradleVersion: 5.2.1
 
 jobs:
   release-on-push:
@@ -25,7 +27,7 @@ jobs:
         name: Build
         if: ${{ steps.release.outputs.version != '' }}
         with:
-          gradle-version: current
+          gradle-version: ${{ env.gradleVersion }}
           arguments: build
       - name: Prepare to publish
         if: ${{ steps.release.outputs.version != '' }}
@@ -37,7 +39,7 @@ jobs:
         name: Publish artifact
         if: ${{ steps.release.outputs.version != '' }}
         with:
-          gradle-version: current
+          gradle-version: ${{ env.gradleVersion }}
           arguments: >
             upload -Psigning.secretKeyRingFile=secret.gpg
             -Psigning.keyId=${{secrets.SIGNING_KEYID}}
@@ -49,7 +51,7 @@ jobs:
         name: Nexus Release
         if: ${{ steps.release.outputs.version != '' }}
         with:
-          gradle-version: current
+          gradle-version: ${{ env.gradleVersion }}
           arguments: >
             closeAndReleaseRepository
             -PnexusUsername=${{secrets.NEXUS_USERNAME}}
