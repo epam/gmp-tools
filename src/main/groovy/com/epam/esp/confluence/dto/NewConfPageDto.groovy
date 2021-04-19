@@ -15,12 +15,13 @@
 
 package com.epam.esp.confluence.dto
 
-public class NewConfPageDto {
+class NewConfPageDto {
     String type = 'page'
     String title
     List<ConfPageAncestors> ancestors
     ConfSpace space
     ConfPageBody body
+    ConfPageMeta metadata
 
     NewConfPageDto(String space, Long ancestor, String title, String body) {
         this.title = title
@@ -29,5 +30,17 @@ public class NewConfPageDto {
         def ancestors = new ArrayList<ConfPageAncestors>()
         ancestors.add(new ConfPageAncestors(ancestor))
         this.ancestors = ancestors
+        this.metadata = ["editor": ["key": "editor", "value": "v2"]]
     }
+
+    NewConfPageDto(String space, Long ancestor, String title, String body, Map<String, Object> meta) {
+        this.title = title
+        this.body = new ConfPageBody(body)
+        this.space = new ConfSpace(space)
+        def ancestors = new ArrayList<ConfPageAncestors>()
+        ancestors.add(new ConfPageAncestors(ancestor))
+        this.ancestors = ancestors
+        this.metadata = new ConfPageMeta(meta)
+    }
+
 }
