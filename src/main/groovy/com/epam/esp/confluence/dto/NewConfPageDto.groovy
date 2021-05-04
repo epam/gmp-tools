@@ -30,7 +30,10 @@ class NewConfPageDto {
         def ancestors = new ArrayList<ConfPageAncestors>()
         ancestors.add(new ConfPageAncestors(ancestor))
         this.ancestors = ancestors
-        this.metadata = ["editor": ["key": "editor", "value": "v2"]]
+        this.metadata = ['editor'                      : ['key': 'editor', 'value': 'v2'],
+                         'content-appearance-draft'    : ['key': 'content-appearance-draft', 'value': 'full-width'],
+                         'content-appearance-published': ['key': 'content_appearance_published', 'value': 'full-width']
+        ]
     }
 
     NewConfPageDto(String space, Long ancestor, String title, String body, Map<String, Object> meta) {
