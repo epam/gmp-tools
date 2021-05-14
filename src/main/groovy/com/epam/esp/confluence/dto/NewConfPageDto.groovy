@@ -32,7 +32,7 @@ class NewConfPageDto {
         this.ancestors = ancestors
         this.metadata = ['editor'                      : ['key': 'editor', 'value': 'v2'],
                          'content-appearance-draft'    : ['key': 'content-appearance-draft', 'value': 'full-width'],
-                         'content-appearance-published': ['key': 'content_appearance_published', 'value': 'full-width']
+                         'content-appearance-published': ['key': 'content-appearance-published', 'value': 'full-width']
         ]
     }
 
