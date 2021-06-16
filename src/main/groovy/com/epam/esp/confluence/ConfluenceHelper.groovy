@@ -141,7 +141,7 @@ class ConfluenceHelper {
             }
         }
         finally {
-            EntityUtils.consume(putPageEntity) F
+            EntityUtils.consume(putPageEntity)
         }
     }
 
@@ -169,7 +169,6 @@ class ConfluenceHelper {
                 logger.error("GET Page Request returned ${getPageResponse.statusLine}")
                 throw new ConfluenceException("Unexpected API response code")
             }
-
         }
         finally {
             if (pageEntity != null) {
