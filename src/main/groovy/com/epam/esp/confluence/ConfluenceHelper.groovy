@@ -128,12 +128,12 @@ class ConfluenceHelper {
             putPageEntity = putPageResponse.getEntity()
             logger.info(putPageRequest.requestLine.uri)
             def pageObj = IOUtils.toString(putPageEntity.getContent())
-            if (putPageResponse.getStatusLine().statusCode != 200) {
-                logger.error("Put Page Request returned ${putPageResponse.getStatusLine()}")
+            if (putPageResponse.statusLine.statusCode != 200) {
+                logger.error("Put Page Request returned ${putPageResponse.statusLine}")
                 logger.error(pageObj)
                 throw new ConfluenceException("Unexpected API response code")
             } else {
-                logger.info("PUT Page Request returned " + putPageResponse.getStatusLine().toString())
+                logger.info("PUT Page Request returned " + putPageResponse.statusLine.toString())
                 JSONObject jsonPage = new JSONObject(pageObj)
                 def url = jsonPage.getJSONObject('_links').getString('base') + jsonPage.getJSONObject('_links').getString('tinyui')
                 logger.info("page URL: $url")
@@ -164,9 +164,9 @@ class ConfluenceHelper {
 
             pageObj = IOUtils.toString(pageEntity.getContent())
 
-            logger.info("Get Page Request returned " + getPageResponse.getStatusLine().toString())
-            if (getPageResponse.getStatusLine().statusCode != 200) {
-                logger.error("GET Page Request returned ${getPageResponse.getStatusLine()}")
+            logger.info("Get Page Request returned " + getPageResponse.statusLine.toString())
+            if (getPageResponse.statusLine.statusCode != 200) {
+                logger.error("GET Page Request returned ${getPageResponse.statusLine}")
                 throw new ConfluenceException("Unexpected API response code")
             }
 
@@ -199,15 +199,15 @@ class ConfluenceHelper {
             HttpResponse putPageResponse = client.execute(putPageRequest)
             putPageEntity = putPageResponse.getEntity()
 
-            logger.info("Put Page Request returned ${putPageResponse.getStatusLine()}")
+            logger.info("Put Page Request returned ${putPageResponse.statusLine}")
             pageObj = IOUtils.toString(putPageEntity.getContent())
             page = new JSONObject(pageObj)
             def url = page.getJSONObject('_links').getString('base') + page.getJSONObject('_links').getString('tinyui')
             logger.info("page URL: $url")
 
 
-            if (putPageResponse.getStatusLine().statusCode != 200) {
-                logger.error("Put Page Request returned ${putPageResponse.getStatusLine()}")
+            if (putPageResponse.statusLine.statusCode != 200) {
+                logger.error("Put Page Request returned ${putPageResponse.statusLine}")
                 throw new ConfluenceException("Unexpected API response code")
             }
         }
@@ -243,12 +243,12 @@ class ConfluenceHelper {
         logger.info(findPageRequest.requestLine.uri)
         def response = client.execute(findPageRequest)
         def findResult = EntityUtils.toString(response.entity)
-        if (response.getStatusLine().statusCode != 200) {
-            logger.error("Find Page Request returned ${response.getStatusLine()}")
+        if (response.statusLine.statusCode != 200) {
+            logger.error("Find Page Request returned ${response.statusLine}")
             logger.error(findResult)
             throw new ConfluenceException("Unexpected API response code")
         } else {
-            logger.info("Find Page Request returned " + response.getStatusLine().toString())
+            logger.info("Find Page Request returned " + response.statusLine.toString())
             JSONObject jsonPage = new JSONObject(findResult)
             def pageList = jsonPage.getJSONArray("results")
             if (pageList != null && !pageList.empty) {
