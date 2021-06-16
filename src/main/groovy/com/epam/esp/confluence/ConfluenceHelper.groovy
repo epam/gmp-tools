@@ -1,6 +1,6 @@
 /*
  *  /***************************************************************************
- *  Copyright (c) 2017, EPAM SYSTEMS INC
+ *  Copyright (c) 2017,  EPAM SYSTEMS INC
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -16,6 +16,7 @@
 package com.epam.esp.confluence
 
 import com.epam.dep.esp.common.json.JsonMapper
+import com.epam.esp.confluence.dto.EditorVersion
 import com.epam.esp.confluence.dto.NewConfPageDto
 import org.apache.commons.io.IOUtils
 import org.apache.http.HttpEntity
@@ -25,9 +26,11 @@ import org.apache.http.client.methods.HttpGet
 import org.apache.http.client.methods.HttpPost
 import org.apache.http.client.methods.HttpPut
 import org.apache.http.client.methods.HttpRequestBase
+import org.apache.http.client.utils.URIBuilder
 import org.apache.http.entity.ContentType
 import org.apache.http.entity.StringEntity
-import org.apache.http.impl.client.DefaultHttpClient
+import org.apache.http.impl.client.HttpClients
+import org.apache.http.message.BasicNameValuePair
 import org.apache.http.util.EntityUtils
 import org.json.JSONObject
 import org.slf4j.Logger
@@ -73,27 +76,58 @@ class ConfluenceHelper {
 
     /**
      *
-     * @param space - space id where new page should be created
-     * @param pageId - parent page id
+     * @param spaceKey - space id where new page should be created
+     * @param parentPageId - parent page id
      * @param title - title foe new page
-     * @param body - page source
+     * @param pageBody - page source
+     * @param editorVersion - Confluence editor version
+     * @param fullWidth - use page fill width alignment
      * @throws ConfluenceException in case of error
+     * @return new page ID
      */
-    def createPage(String space, Long pageId, String title, String body) {
-        // Send createPage request
+    Long createPage(String spaceKey, Long parentPageId, String title, String pageBody,
+                    EditorVersion editorVersion = EditorVersion.V2, boolean fullWidth = false) {
+        return createOrUpdatePage(spaceKey, parentPageId, title, pageBody, editorVersion, fullWidth, true)
+    }
+
+    /**
+     *
+     * @param spaceKey - space id where new page should be created
+     * @param parentPageId - parent page id
+     * @param title - title foe new page
+     * @param pageBody - page source
+     * @param editorVersion - Confluence editor version
+     * @param fullWidth - use page fill width alignment
+     * @param failIfExist - throw an exception when page with such title is already created
+     * @throws com.epam.esp.confluence.ConfluenceException in case of error
+     * @return new page ID
+     */
+    Long createOrUpdatePage(String spaceKey, Long parentPageId, String title, String pageBody,
+                            EditorVersion editorVersion = EditorVersion.V2,
+                            boolean fullWidth = false,
+                            boolean failIfExist = false) {
         HttpEntity putPageEntity = null
-        HttpClient client = new DefaultHttpClient()
+        HttpClient client = HttpClients.createDefault()
         try {
+            def existPageId = findPageIdByTitle(spaceKey, title)
+            if (existPageId != null) {
+                if (failIfExist) {
+                    def errorMessage = "Page with title '${title}' already exists in space ${spaceKey} with id ${existPageId}"
+                    logger.error(errorMessage)
+                    throw new ConfluenceException(errorMessage)
+                }
+                updatePage(existPageId, pageBody)
+                return existPageId
+            }
             HttpPost putPageRequest = new HttpPost(createContentRestUrl())
             setAuthHeader(putPageRequest)
-            def pageDto = new NewConfPageDto(space, pageId, title, body)
+            def pageDto = new NewConfPageDto(spaceKey, parentPageId, title, pageBody, editorVersion, fullWidth)
             StringEntity entity = new StringEntity(JsonMapper.getInstance().map(pageDto), ContentType.APPLICATION_JSON)
             putPageRequest.setEntity(entity)
             HttpResponse putPageResponse = client.execute(putPageRequest)
             putPageEntity = putPageResponse.getEntity()
             logger.info(putPageRequest.requestLine.uri)
             def pageObj = IOUtils.toString(putPageEntity.getContent())
-            //logger.info(IOUtils.toString(putPageEntity.getContent()))
             if (putPageResponse.getStatusLine().getStatusCode() != 200) {
                 logger.error("Put Page Request returned ${putPageResponse.getStatusLine()}")
                 logger.error(pageObj)
@@ -103,6 +137,7 @@ class ConfluenceHelper {
                 JSONObject jsonPage = new JSONObject(pageObj)
                 def url = jsonPage.getJSONObject('_links').getString('base') + jsonPage.getJSONObject('_links').getString('tinyui')
                 logger.info("page URL: $url")
+                return jsonPage.getLong("id")
             }
         }
         finally {
@@ -117,7 +152,7 @@ class ConfluenceHelper {
      * @throws ConfluenceException in case of error
      */
     def updatePage(Long pageId, String body) {
-        HttpClient client = new DefaultHttpClient()
+        HttpClient client = HttpClients.createDefault()
         // Get current page version
         String pageObj = null
         HttpEntity pageEntity = null
@@ -177,7 +212,7 @@ class ConfluenceHelper {
             }
         }
         finally {
-            EntityUtils.consume(putPageEntity);
+            EntityUtils.consume(putPageEntity)
         }
     }
 
@@ -187,5 +222,40 @@ class ConfluenceHelper {
      */
     def setAuthHeader(HttpRequestBase request) {
         request.setHeader('Authorization', authHeader)
+    }
+
+    /**
+     * find page by spaceKey and title
+     * @param spaceKey
+     * @param title
+     * @return founded page ID or null
+     */
+    Long findPageIdByTitle(String spaceKey, String title) {
+        HttpClient client = HttpClients.createDefault()
+        List requestParams = [new BasicNameValuePair("title", title),
+                              new BasicNameValuePair("spaceKey", spaceKey),
+        ]
+        URI uri = new URIBuilder(createContentRestUrl())
+                .addParameters(requestParams)
+                .build()
+        def findPageRequest = new HttpGet(uri)
+        setAuthHeader(findPageRequest)
+        logger.info(findPageRequest.requestLine.uri)
+        def response = client.execute(findPageRequest)
+        def responseEntity = response.getEntity()
+        def findResult = EntityUtils.toString(responseEntity)
+        if (response.getStatusLine().getStatusCode() != 200) {
+            logger.error("Find Page Request returned ${response.getStatusLine()}")
+            logger.error(findResult)
+            throw new ConfluenceException("Unexpected API response code")
+        } else {
+            logger.info("Find Page Request returned " + response.getStatusLine().toString())
+            JSONObject jsonPage = new JSONObject(findResult)
+            def pageList = jsonPage.getJSONArray("results")
+            if (pageList != null && !pageList.empty) {
+                return ((JSONObject) pageList[0]).getLong("id")
+            }
+            return null
+        }
     }
 }
