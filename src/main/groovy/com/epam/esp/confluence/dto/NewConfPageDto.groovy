@@ -36,7 +36,7 @@ class NewConfPageDto {
             metadata.properties['content-appearance-draft'] = ['key': 'content-appearance-draft', 'value': 'full-width']
             metadata.properties['content-appearance-published'] = ['key': 'content-appearance-published', 'value': 'full-width']
         }
-        if (EditorVersion.V2.equals(editorVersion)) {
+        if (EditorVersion.V2 == (editorVersion)) {
             metadata.properties['editor'] = ['key': 'editor', 'value': 'v2']
         }
     }

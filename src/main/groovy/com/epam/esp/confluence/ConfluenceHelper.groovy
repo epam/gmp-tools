@@ -128,7 +128,7 @@ class ConfluenceHelper {
             putPageEntity = putPageResponse.getEntity()
             logger.info(putPageRequest.requestLine.uri)
             def pageObj = IOUtils.toString(putPageEntity.getContent())
-            if (putPageResponse.getStatusLine().getStatusCode() != 200) {
+            if (putPageResponse.getStatusLine().statusCode != 200) {
                 logger.error("Put Page Request returned ${putPageResponse.getStatusLine()}")
                 logger.error(pageObj)
                 throw new ConfluenceException("Unexpected API response code")
@@ -141,7 +141,7 @@ class ConfluenceHelper {
             }
         }
         finally {
-            EntityUtils.consume(putPageEntity)
+            EntityUtils.consume(putPageEntity) F
         }
     }
 
@@ -206,7 +206,7 @@ class ConfluenceHelper {
             logger.info("page URL: $url")
 
 
-            if (putPageResponse.getStatusLine().getStatusCode() != 200) {
+            if (putPageResponse.getStatusLine().statusCode != 200) {
                 logger.error("Put Page Request returned ${putPageResponse.getStatusLine()}")
                 throw new ConfluenceException("Unexpected API response code")
             }
@@ -242,9 +242,8 @@ class ConfluenceHelper {
         setAuthHeader(findPageRequest)
         logger.info(findPageRequest.requestLine.uri)
         def response = client.execute(findPageRequest)
-        def responseEntity = response.getEntity()
-        def findResult = EntityUtils.toString(responseEntity)
-        if (response.getStatusLine().getStatusCode() != 200) {
+        def findResult = EntityUtils.toString(response.entity)
+        if (response.getStatusLine().statusCode != 200) {
             logger.error("Find Page Request returned ${response.getStatusLine()}")
             logger.error(findResult)
             throw new ConfluenceException("Unexpected API response code")
