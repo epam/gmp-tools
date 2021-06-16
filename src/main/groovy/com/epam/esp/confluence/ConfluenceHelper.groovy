@@ -25,11 +25,11 @@ import org.apache.http.client.HttpClient
 import org.apache.http.client.methods.HttpGet
 import org.apache.http.client.methods.HttpPost
 import org.apache.http.client.methods.HttpPut
-import org.apache.http.client.methods.HttpRequestBase
 import org.apache.http.client.utils.URIBuilder
 import org.apache.http.entity.ContentType
 import org.apache.http.entity.StringEntity
 import org.apache.http.impl.client.HttpClients
+import org.apache.http.message.BasicHeader
 import org.apache.http.message.BasicNameValuePair
 import org.apache.http.util.EntityUtils
 import org.json.JSONObject
@@ -40,11 +40,9 @@ import java.nio.charset.StandardCharsets
 
 class ConfluenceHelper {
     String baseUrl
-    String username
-    String password
-    static final String ENCODING = StandardCharsets.UTF_8.name()
+    final static String ENCODING = StandardCharsets.UTF_8.name()
     final static Logger logger = LoggerFactory.getLogger(ConfluenceHelper.class)
-    private String authHeader
+    final HttpClient client
 
     /**
      * @param baseUrl
@@ -53,10 +51,10 @@ class ConfluenceHelper {
      */
     ConfluenceHelper(baseUrl, username, password) {
         this.baseUrl = baseUrl.toString()
-        this.username = username.toString()
-        this.password = password.toString()
-        def encodedCredentials = Base64.getEncoder().encodeToString("$username:$password".getBytes())
-        this.authHeader = "Basic $encodedCredentials"
+        def encodedCredentials = Base64.getEncoder().encodeToString("${username}:${password}".getBytes())
+        this.client = HttpClients.custom()
+                .setDefaultHeaders([new BasicHeader('Authorization', "Basic $encodedCredentials")])
+                .build()
     }
 
     /**
@@ -84,7 +82,7 @@ class ConfluenceHelper {
      * @return new page ID
      */
     def createPage(String space, Long pageId, String title, String body) {
-        createOrUpdatePage(space, pageId, title, body, editorVersion, fullWidth, true)
+        createOrUpdatePage(space, pageId, title, body, EditorVersion.V2, true, true)
     }
 
     /**
@@ -104,7 +102,6 @@ class ConfluenceHelper {
                             boolean fullWidth = false,
                             boolean failIfExist = false) {
         HttpEntity putPageEntity = null
-        HttpClient client = HttpClients.createDefault()
         try {
             def existPageId = findPageIdByTitle(spaceKey, title)
             if (existPageId != null) {
@@ -117,7 +114,6 @@ class ConfluenceHelper {
                 return existPageId
             }
             HttpPost putPageRequest = new HttpPost(createContentRestUrl())
-            setAuthHeader(putPageRequest)
             def pageDto = new NewConfPageDto(spaceKey, parentPageId, title, pageBody, editorVersion, fullWidth)
             StringEntity entity = new StringEntity(JsonMapper.getInstance().map(pageDto), ContentType.APPLICATION_JSON)
             putPageRequest.setEntity(entity)
@@ -149,13 +145,11 @@ class ConfluenceHelper {
      * @throws ConfluenceException in case of error
      */
     def updatePage(Long pageId, String body) {
-        HttpClient client = HttpClients.createDefault()
         // Get current page version
         String pageObj = null
         HttpEntity pageEntity = null
         try {
             HttpGet getPageRequest = new HttpGet(getContentRestUrl(pageId, 'body.storage version ancestors'.split()))
-            setAuthHeader(getPageRequest)
             HttpResponse getPageResponse = client.execute(getPageRequest)
             pageEntity = getPageResponse.getEntity()
 
@@ -188,7 +182,6 @@ class ConfluenceHelper {
 
         try {
             HttpPut putPageRequest = new HttpPut(getContentRestUrl(pageId, new String[0]))
-            setAuthHeader(putPageRequest)
             StringEntity entity = new StringEntity(page.toString(), ContentType.APPLICATION_JSON)
             putPageRequest.setEntity(entity)
 
@@ -213,21 +206,12 @@ class ConfluenceHelper {
     }
 
     /**
-     * @param request
-     * Set Basic Authorization header to HTTP request
-     */
-    def setAuthHeader(HttpRequestBase request) {
-        request.setHeader('Authorization', authHeader)
-    }
-
-    /**
      * find page by spaceKey and title
      * @param spaceKey
      * @param title
      * @return founded page ID or null
      */
     Long findPageIdByTitle(String spaceKey, String title) {
-        HttpClient client = HttpClients.createDefault()
         List requestParams = [new BasicNameValuePair("title", title),
                               new BasicNameValuePair("spaceKey", spaceKey),
         ]
@@ -235,7 +219,6 @@ class ConfluenceHelper {
                 .addParameters(requestParams)
                 .build()
         def findPageRequest = new HttpGet(uri)
-        setAuthHeader(findPageRequest)
         logger.info(findPageRequest.requestLine.uri)
         def response = client.execute(findPageRequest)
         def findResult = EntityUtils.toString(response.entity)
