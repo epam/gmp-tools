@@ -51,7 +51,7 @@ class ConfluenceHelper {
      */
     ConfluenceHelper(baseUrl, username, password) {
         this.baseUrl = baseUrl.toString()
-        def encodedCredentials = Base64.getEncoder().encodeToString("${username}:${password}".getBytes())
+        def encodedCredentials = Base64.encoder.encodeToString("${username}:${password}".getBytes())
         this.client = HttpClients.custom()
                 .setDefaultHeaders([new BasicHeader('Authorization', "Basic $encodedCredentials")])
                 .build()
