@@ -31,7 +31,7 @@ class NewConfPageDto {
         def ancestors = new ArrayList<ConfPageAncestors>()
         ancestors.add(new ConfPageAncestors(ancestor))
         this.ancestors = ancestors
-        this.metadata = []
+        this.metadata = new ConfPageMeta()
         if (fullWidth) {
             metadata.properties['content-appearance-draft'] = ['key': 'content-appearance-draft', 'value': 'full-width']
             metadata.properties['content-appearance-published'] = ['key': 'content-appearance-published', 'value': 'full-width']

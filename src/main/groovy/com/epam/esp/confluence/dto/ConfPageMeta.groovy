@@ -18,7 +18,7 @@ package com.epam.esp.confluence.dto
 class ConfPageMeta {
     Map<String, Object> properties
 
-    ConfPageMeta(Map<String, Object> properties) {
+    ConfPageMeta(Map<String, Object> properties = new HashMap<>()) {
         this.properties = properties
     }
 }
