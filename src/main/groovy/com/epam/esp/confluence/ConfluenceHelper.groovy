@@ -76,18 +76,15 @@ class ConfluenceHelper {
 
     /**
      *
-     * @param spaceKey - space id where new page should be created
-     * @param parentPageId - parent page id
+     * @param space - space id where new page should be created
+     * @param - parent page id
      * @param title - title foe new page
-     * @param pageBody - page source
-     * @param editorVersion - Confluence editor version
-     * @param fullWidth - use page fill width alignment
+     * @param body - page source
      * @throws ConfluenceException in case of error
      * @return new page ID
      */
-    Long createPage(String spaceKey, Long parentPageId, String title, String pageBody,
-                    EditorVersion editorVersion = EditorVersion.V2, boolean fullWidth = false) {
-        return createOrUpdatePage(spaceKey, parentPageId, title, pageBody, editorVersion, fullWidth, true)
+    def createPage(String space, Long pageId, String title, String body) {
+        createOrUpdatePage(space, pageId, title, body, editorVersion, fullWidth, true)
     }
 
     /**
