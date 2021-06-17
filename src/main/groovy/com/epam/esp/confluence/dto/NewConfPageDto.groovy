@@ -31,13 +31,10 @@ class NewConfPageDto {
         def ancestors = new ArrayList<ConfPageAncestors>()
         ancestors.add(new ConfPageAncestors(ancestor))
         this.ancestors = ancestors
-        this.metadata = new ConfPageMeta()
+        this.metadata = ['editor': ['key': 'editor', 'value': editorVersion.value]]
         if (fullWidth) {
             metadata.properties['content-appearance-draft'] = ['key': 'content-appearance-draft', 'value': 'full-width']
             metadata.properties['content-appearance-published'] = ['key': 'content-appearance-published', 'value': 'full-width']
-        }
-        if (EditorVersion.V2 == (editorVersion)) {
-            metadata.properties['editor'] = ['key': 'editor', 'value': 'v2']
         }
     }
 
