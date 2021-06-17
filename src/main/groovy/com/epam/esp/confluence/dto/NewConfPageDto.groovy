@@ -23,17 +23,19 @@ class NewConfPageDto {
     ConfPageBody body
     ConfPageMeta metadata
 
-    NewConfPageDto(String space, Long ancestor, String title, String body) {
+    NewConfPageDto(String space, Long ancestor, String title, String body,
+                   EditorVersion editorVersion = EditorVersion.V2, boolean fullWidth = true) {
         this.title = title
         this.body = new ConfPageBody(body)
         this.space = new ConfSpace(space)
         def ancestors = new ArrayList<ConfPageAncestors>()
         ancestors.add(new ConfPageAncestors(ancestor))
         this.ancestors = ancestors
-        this.metadata = ['editor'                      : ['key': 'editor', 'value': 'v2'],
-                         'content-appearance-draft'    : ['key': 'content-appearance-draft', 'value': 'full-width'],
-                         'content-appearance-published': ['key': 'content-appearance-published', 'value': 'full-width']
-        ]
+        this.metadata = ['editor': ['key': 'editor', 'value': editorVersion.value]]
+        if (fullWidth) {
+            metadata.properties['content-appearance-draft'] = ['key': 'content-appearance-draft', 'value': 'full-width']
+            metadata.properties['content-appearance-published'] = ['key': 'content-appearance-published', 'value': 'full-width']
+        }
     }
 
     NewConfPageDto(String space, Long ancestor, String title, String body, Map<String, Object> meta) {
@@ -45,5 +47,4 @@ class NewConfPageDto {
         this.ancestors = ancestors
         this.metadata = new ConfPageMeta(meta)
     }
-
 }
