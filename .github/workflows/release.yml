@@ -42,7 +42,7 @@ jobs:
         with:
           gradle-version: ${{ env.gradleVersion }}
           arguments: >
-            upload -Psigning.secretKeyRingFile=secret.gpg
+            publish -Psigning.secretKeyRingFile=secret.gpg
             -Psigning.keyId=${{secrets.SIGNING_KEYID}}
             -Psigning.password=${{secrets.SIGNING_PASSWORD}}
             -PnexusUsername=${{secrets.NEXUS_USERNAME}}
