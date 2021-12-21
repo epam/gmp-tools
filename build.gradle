@@ -13,7 +13,7 @@
  *  ***************************************************************************
  */
 plugins {
-    id 'java'
+    id 'java-library'
     id 'groovy'
     id 'maven'
     id 'signing'
@@ -51,28 +51,27 @@ repositories {
 }
 
 dependencies {
-    compile "com.epam.dep.esp:gmp-common:$gmpCommonVersion"
-    compile "org.codehaus.groovy:groovy-all:$groovyVersion"
-    compile "org.slf4j:slf4j-api:${slf4jVersion}"
-    compile "org.slf4j:slf4j-log4j12:${slf4jVersion}"
-    compile "com.atlassian.jira:jira-rest-java-client-api:$atlassianJiraRestVersion"
-    compile "com.atlassian.jira:jira-rest-java-client-core:$atlassianJiraRestVersion"
-    compile "io.atlassian.fugue:fugue:$atlassianFugueVersion"
-    compile "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
-    compile "org.apache.commons:commons-io:$commonsIoVersion"
-    compile "commons-cli:commons-cli:$commonsCliVersion"
-    compile "org.json:json:$jsonVersion"
-
-    compile "net.sf.ehcache:ehcache:$ehCacheVersion"
+    api "com.epam.dep.esp:gmp-common:$gmpCommonVersion"
+    api "org.codehaus.groovy:groovy-all:$groovyVersion"
+    api "org.slf4j:slf4j-api:${slf4jVersion}"
+    api "org.slf4j:slf4j-log4j12:${slf4jVersion}"
+    api "com.atlassian.jira:jira-rest-java-client-api:$atlassianJiraRestVersion"
+    api "com.atlassian.jira:jira-rest-java-client-core:$atlassianJiraRestVersion"
+    api "io.atlassian.fugue:fugue:$atlassianFugueVersion"
+    api "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
+    api "org.apache.commons:commons-io:$commonsIoVersion"
+    api "commons-cli:commons-cli:$commonsCliVersion"
+    api "org.json:json:$jsonVersion"
+    api "net.sf.ehcache:ehcache:$ehCacheVersion"
 
 //ElasticSearch
-    compile "org.elasticsearch.client:transport:${elasticSearchVersion}"
-    compile "org.apache.logging.log4j:log4j-api:$log4jVersion"
-    compile "org.apache.logging.log4j:log4j-core:$log4jVersion"
-    compile "org.elasticsearch.client:x-pack-transport:${elasticSearchVersion}"
+    implementation "org.elasticsearch.client:transport:${elasticSearchVersion}"
+    implementation "org.apache.logging.log4j:log4j-api:$log4jVersion"
+    implementation "org.apache.logging.log4j:log4j-core:$log4jVersion"
+    implementation "org.elasticsearch.client:x-pack-transport:${elasticSearchVersion}"
 //end ElasticSearch
 
-    testCompile "junit:junit:$junitVersion"
+    testImplementation "junit:junit:$junitVersion"
 }
 
 task copyToLib(type: Copy) {
@@ -134,6 +133,8 @@ uploadArchives {
 
 nexusStaging {
     packageGroup = "com.epam.dep"
+    numberOfRetries = 40
+    delayBetweenRetriesInMillis = 10000
 }
 
 task javadocJar(type: Jar) {

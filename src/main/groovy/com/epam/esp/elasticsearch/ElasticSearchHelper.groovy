@@ -17,16 +17,16 @@ package com.epam.esp.elasticsearch
 
 import com.epam.esp.jira.JiraHelper
 import org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequestBuilder
-import org.elasticsearch.action.admin.indices.alias.IndicesAliasesResponse
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesResponse
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse
 import org.elasticsearch.action.get.GetResponse
 import org.elasticsearch.action.index.IndexRequestBuilder
 import org.elasticsearch.action.search.SearchRequestBuilder
+import org.elasticsearch.action.support.master.AcknowledgedResponse
 import org.elasticsearch.client.IndicesAdminClient
 import org.elasticsearch.client.Requests
-import org.elasticsearch.cluster.metadata.AliasMetaData
-import org.elasticsearch.cluster.metadata.IndexMetaData
+import org.elasticsearch.cluster.metadata.AliasMetadata
+import org.elasticsearch.cluster.metadata.IndexMetadata
 import org.elasticsearch.common.collect.ImmutableOpenMap
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.settings.Settings.Builder
@@ -95,11 +95,11 @@ class ElasticSearchHelper {
      * @return true if given index exists
      */
     boolean isIndexExists(String indexName) {
-        IndexMetaData indexMetaData = client.admin().cluster()
+        IndexMetadata indexMetaData = client.admin().cluster()
                 .state(Requests.clusterStateRequest())
                 .actionGet()
                 .getState()
-                .getMetaData()
+                .getMetadata()
                 .index(indexName);
         return (indexMetaData != null);
     }
@@ -242,7 +242,7 @@ class ElasticSearchHelper {
     Collection<String> getIndicesFromAliasName(String aliasName, String indexName, Comparator<String> comparator) {
         IndicesAdminClient iac = client.admin().indices();
         GetAliasesResponse aliasResponse = iac.prepareGetAliases(aliasName).get()
-        ImmutableOpenMap<String, List<AliasMetaData>> map = aliasResponse.getAliases();
+        ImmutableOpenMap<String, List<AliasMetadata>> map = aliasResponse.getAliases();
         final Set<String> allIndices = new HashSet<>();
 
         def iterator = map.iterator()
@@ -284,7 +284,7 @@ class ElasticSearchHelper {
                 requestBuilder.removeIndex(indexToDrop);
             }
 
-            IndicesAliasesResponse response = requestBuilder.execute().actionGet();
+            AcknowledgedResponse response = requestBuilder.execute().actionGet();
             if (!response.isAcknowledged()) {
                 logger.warn("Unable to switch alias $aliasName to use index $indexName");
             }

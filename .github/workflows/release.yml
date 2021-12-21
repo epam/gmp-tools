@@ -4,7 +4,7 @@ on:
     branches:
       - master
 env:
-  gradleVersion: 5.2.1
+  gradleVersion: 7.3.2
 
 jobs:
   release-on-push:
