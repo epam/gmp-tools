@@ -31,7 +31,7 @@ import org.elasticsearch.common.collect.ImmutableOpenMap
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.settings.Settings.Builder
 import org.elasticsearch.common.transport.TransportAddress
-import org.elasticsearch.common.xcontent.XContentType
+import org.elasticsearch.xcontent.XContentType
 import org.elasticsearch.transport.client.PreBuiltTransportClient
 import org.elasticsearch.xpack.client.PreBuiltXPackTransportClient
 import org.joda.time.DateTime
