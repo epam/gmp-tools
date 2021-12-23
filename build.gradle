@@ -1,3 +1,5 @@
+import org.gradle.api.artifacts.DependencyResolveDetails
+
 /*
  *  /***************************************************************************
  *  Copyright (c) 2017, EPAM SYSTEMS INC
@@ -63,6 +65,13 @@ dependencies {
 
 //ElasticSearch
     implementation "org.elasticsearch.client:transport:${elasticSearchVersion}"
+    configurations.all {
+        resolutionStrategy {
+            force 'io.netty:netty-codec-http:4.1.71.Final'
+            force 'io.netty:netty-codec:4.1.71.Final'
+            force 'io.netty:netty-handler:4.1.71.Final'
+        }
+    }
     implementation "org.apache.logging.log4j:log4j-api:$log4jVersion"
     implementation "org.apache.logging.log4j:log4j-core:$log4jVersion"
     implementation "org.elasticsearch.client:x-pack-transport:${elasticSearchVersion}"
@@ -145,3 +154,5 @@ if (project.hasProperty('signing.keyId')) {
         sign publishing.publications.sonatypeOss
     }
 }
+
+
