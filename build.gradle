@@ -52,7 +52,6 @@ dependencies {
     api "com.epam.dep.esp:gmp-common:$gmpCommonVersion"
     api "org.codehaus.groovy:groovy-all:$groovyVersion"
     api "org.slf4j:slf4j-api:${slf4jVersion}"
-    api "org.slf4j:slf4j-log4j12:${slf4jVersion}"
     api "com.atlassian.jira:jira-rest-java-client-api:$atlassianJiraRestVersion"
     api "com.atlassian.jira:jira-rest-java-client-core:$atlassianJiraRestVersion"
     api "io.atlassian.fugue:fugue:$atlassianFugueVersion"
